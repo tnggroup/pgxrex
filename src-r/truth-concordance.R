@@ -11,7 +11,17 @@ projectFolderPath<-"/scratch/prj/sgdp_nanopore/Projects/prada_jz"
 
 dAnalysis <- fread(file.path(projectFolderPath,"data","pradaApp","prada_sequencing_run_database.analysis.tsv.txt")) #these are database files containing the collected folder configurations for all runs/analyses.
 dAnalysis[,code:=analysis_id] #harmonise with pgxrex naming
-dSample <- fread(file.path(projectFolderPath,"data","pradaApp","prada_sequencing_run_database.sample.tsv.txt"))
+filenameSampleTemplate<-file.path(projectFolderPath,"data","pradaApp","prada_sequencing_run_database.sample.tsv.txt")
+filenameSamplePreviousResults<-file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv")
+
+#use existing result if possible
+usingPreviousResults<-F
+if(file.exists(filenameSamplePreviousResults)) {
+    dSample<-fread(filenameSamplePreviousResults)
+    usingPreviousResults<-T
+  } else {
+    dSample <- fread(file.path(filenameSampleTemplate))
+  }
 
 #reference H (HG002)
 dSampleVCF<-read.vcfR(file.path(projectFolderPath,"work","pgx","downsampled-bam-runs","truth-set","HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"), verbose = F)
@@ -91,27 +101,65 @@ for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
   pgxrexObj$readPrintData(file.path(projectFolderPath,"work","pradaApp",cPilotID))
 }
 
-#complementary analyses - per analysis
-for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
-  #iAnalysis<-2
-  cAnalysisID<-pgxrexObj$analysisMeta[iAnalysis,c("code")]
-  if(is.null(cAnalysisID)) next
-  if(nchar(cAnalysisID)<1) next
+#complementary analyses - per analysis - This is time-consuming - skip if existing results
+#produces a temporary version of sample results
+if(!usingPreviousResults){
+  for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
 
-  pgxrexObj$collectAnalysisDepthData(cAnalysisID)
-  pgxrexObj$computeDepthDataStatistics(filePathBed = file.path(projectFolderPath,"data/bed/pgx.grch38.5k.0p7percent.bed"))
+    #iAnalysis<-2
+    cAnalysisID<-pgxrexObj$analysisMeta[iAnalysis,c("code")]
+    cat(paste0("\nComplementary analysis for ",cAnalysisID))
+    if(is.null(cAnalysisID)) next
+    if(nchar(cAnalysisID)<1) next
 
-  #pgxrexObj$sampleSettingsList[["p2-gtube_barcode01"]]$sequencingDepthRegionsTable
+    pgxrexObj$collectAnalysisDepthData(cAnalysisID)
+    pgxrexObj$computeDepthDataStatistics(filePathBed = file.path(projectFolderPath,"data/bed/pgx.grch38.5k.0p7percent.bed"))
+
+    cSamples<-pgxrexObj$sampleMeta[pgxrexObj$sampleMeta$analysis==cAnalysisID,]
+    for(iSample in 1:nrow(cSamples)){
+      #iSample<-1
+
+      cUniqueSampleId<-rownames(cSamples)[iSample]
+      #depth statistics if available (computed again above)
+      if(!is.null(pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable)){
+        cStats<-pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable
+        pgxrexObj$sampleMeta[iSample,c(
+          paste0("sdepth_q050.CYP2B6"),
+          paste0("sdepth_q050.CYP2C19"),
+          paste0("sdepth_q050.CYP2D6")
+        )]<-list(
+          cStats[cStats$label_region=="CYP2B6",c("sdepth_q050")],
+          cStats[cStats$label_region=="CYP2C19",c("sdepth_q050")],
+          cStats[cStats$label_region=="CYP2D6",c("sdepth_q050")]
+        )
+
+      }
+
+      #cleanup
+      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthTable<-NULL
+      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTable<-NULL
+      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTableCustom<-NULL
+      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable<-NULL
+
+    }
+
+
+    #pgxrexObj$sampleSettingsList[["p2-gtube_barcode01"]]$sequencingDepthRegionsTable
+
+    shru::writeFile(pgxrexObj$sampleMeta,file=file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv"),nThreads = 5)
+
+  }
 
 }
 
 #this only depends on the file/database metadata and does not index existing barcodes again
 for(iSample in 1:nrow(dSample)){
-  #iSample<-53
-  cSampleID<-dSample[iSample,c("barcode")]
-  cAnalysisID<-dSample[iSample,c("analysis")]
-  cPilotID<-dAnalysis[`analysis id`==eval(cAnalysisID),c("pilot id")]
-  cPathAnalysisOutput<-dAnalysis[`analysis id`==eval(cAnalysisID),c("pathAnalysisOutput")]
+  #iSample<-1
+  cSampleID<-pgxrexObj$sampleMeta[iSample,c("barcode")]
+  cUniqueSampleId<-rownames(pgxrexObj$sampleMeta)[iSample]
+  cAnalysisID<-pgxrexObj$sampleMeta[iSample,c("analysis")]
+  cPilotID<-pgxrexObj$analysisMeta[cAnalysisID,c("pilot_id")]
+  cPathAnalysisOutput<-pgxrexObj$analysisMeta[cAnalysisID,c("pathAnalysisOutput")]
 
   cat(paste0("\nSample ",cSampleID))
 
@@ -178,14 +226,14 @@ for(iSample in 1:nrow(dSample)){
         mDiscordantALT.credible<-mDiscordantALT
       }
 
-      dSample[iSample,c(
+      pgxrexObj$sampleMeta[iSample,c(
         #paste0("mREF.",cComparison),
         paste0("mVCF.",cComparison),
         paste0("mConcordantREF.",cComparison),
         paste0("mConcordantALT.",cComparison),
         paste0("mDiscordantREF.",cComparison),
         paste0("mDiscordantALT.",cComparison)
-      ):=list(mVCF,mConcordantREF,mConcordantALT,mDiscordantREF,mDiscordantALT)]
+      )]<-list(mVCF,mConcordantREF,mConcordantALT,mDiscordantREF,mDiscordantALT)
 
     }
   } else {
@@ -194,20 +242,21 @@ for(iSample in 1:nrow(dSample)){
 
   cat(paste0(": ",mostCredibleReference))
 
-  dSample[iSample,c("mostCredibleReference",
+  pgxrexObj$sampleMeta[iSample,c("mostCredibleReference",
                     "evaluationRatio",
                     "mVCF",
                     "mConcordantREF.credible",
                     "mConcordantALT.credible",
                     "mDiscordantREF.credible",
-                    "mDiscordantALT.credible"):=list(
+                    "mDiscordantALT.credible")]<-list(
                       mostCredibleReference,
                       ratioOfMostCredibleReference,
                       mVCF,
                       mConcordantREF.credible,
                       mConcordantALT.credible,
                       mDiscordantREF.credible,
-                      mDiscordantALT.credible)]
+                      mDiscordantALT.credible)
+
 
   filePathPGX<-file.path(projectFolderPath,"work","pradaApp", cPilotID ,paste0("pgxCallsAggCustom_",cAnalysisID,"_",cSampleID,".tsv")) #the pilot folder has to have the same name as the pilot ID.
   if(file.exists(filePathPGX)){
@@ -225,14 +274,14 @@ for(iSample in 1:nrow(dSample)){
     matchingCond<-unlist(allGeneCalls) %in% unlist(matchingGeneCalls)
 
     allGeneCalls.columns<-paste0("GC_",unlist(allGeneCalls))
-    dSample[iSample,allGeneCalls.columns]<-0
-    dSample[iSample,allGeneCalls.columns[matchingCond]]<-1
+    pgxrexObj$sampleMeta[iSample,allGeneCalls.columns]<-0
+    pgxrexObj$sampleMeta[iSample,allGeneCalls.columns[matchingCond]]<-1
 
     cat(paste0(" 🧬"))
 
   }
 
-  shru::writeFile(dSample,file=file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv"),nThreads = 5)
+  shru::writeFile(pgxrexObj$sampleMeta,file=file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv"),nThreads = 5)
 
 }
 

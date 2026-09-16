@@ -7,7 +7,7 @@ library(data.table)
 library(vcfR)
 
 projectFolderPath<-"/scratch/prj/sgdp_nanopore/Projects/prada_jz"
-#projectFolderPath<-"/Users/jakz/Documents/work_rstudio/prada" #local
+#projectFolderPath<-"/Users/jakz/Documents/work_rstudio/pgxrex" #local
 
 dAnalysis <- fread(file.path(projectFolderPath,"data","pradaApp","prada_sequencing_run_database.analysis.tsv.txt")) #these are database files containing the collected folder configurations for all runs/analyses.
 dAnalysis[,code:=analysis_id] #harmonise with pgxrex naming
@@ -17,9 +17,11 @@ filenameSamplePreviousResults<-file.path(projectFolderPath,"work","pradaApp","pe
 #use existing result if possible
 usingPreviousResults<-F
 if(file.exists(filenameSamplePreviousResults)) {
+    catl("Using existing sample results")
     dSample<-fread(filenameSamplePreviousResults)
     usingPreviousResults<-T
   } else {
+    catl("Initiating sample data from template")
     dSample <- fread(file.path(filenameSampleTemplate))
   }
 
@@ -103,65 +105,78 @@ for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
 
 #complementary analyses - per analysis - This is time-consuming - skip if existing results
 #produces a temporary version of sample results
-if(!usingPreviousResults){
-  for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
+for(iAnalysis in 1:nrow(pgxrexObj$analysisMeta)){
 
-    #iAnalysis<-2
-    cAnalysisID<-pgxrexObj$analysisMeta[iAnalysis,c("code")]
-    cat(paste0("\nComplementary analysis for ",cAnalysisID))
-    if(is.null(cAnalysisID)) next
-    if(nchar(cAnalysisID)<1) next
+  #iAnalysis<-2
+  cAnalysisID<-pgxrexObj$analysisMeta[iAnalysis,c("code")]
+  catl(paste0("Complementary analysis for ",cAnalysisID))
+  if(is.null(cAnalysisID)) next
+  if(nchar(cAnalysisID)<1) next
 
-    pgxrexObj$collectAnalysisDepthData(cAnalysisID)
-    pgxrexObj$computeDepthDataStatistics(filePathBed = file.path(projectFolderPath,"data/bed/pgx.grch38.5k.0p7percent.bed"))
+  cSamples<-pgxrexObj$sampleMeta[pgxrexObj$sampleMeta$analysis==cAnalysisID,]
 
-    cSamples<-pgxrexObj$sampleMeta[pgxrexObj$sampleMeta$analysis==cAnalysisID,]
-    for(iSample in 1:nrow(cSamples)){
-      #iSample<-1
+  if(any(names(cSamples)=="sdepth_q050.CYP2B6")){
+    if(all(is.finite(
+      unlist(cSamples[,c(
+      "sdepth_q050.CYP2B6",
+      "sdepth_q050.CYP2C19",
+      "sdepth_q050.CYP2D6"
+    )])
+    ))) next
+  }
 
-      cUniqueSampleId<-rownames(cSamples)[iSample]
-      #depth statistics if available (computed again above)
-      if(!is.null(pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable)){
-        cStats<-pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable
-        pgxrexObj$sampleMeta[iSample,c(
-          paste0("sdepth_q050.CYP2B6"),
-          paste0("sdepth_q050.CYP2C19"),
-          paste0("sdepth_q050.CYP2D6")
-        )]<-list(
-          cStats[cStats$label_region=="CYP2B6",c("sdepth_q050")],
-          cStats[cStats$label_region=="CYP2C19",c("sdepth_q050")],
-          cStats[cStats$label_region=="CYP2D6",c("sdepth_q050")]
-        )
+  pgxrexObj$collectAnalysisDepthData(cAnalysisID)
+  pgxrexObj$computeDepthDataStatistics(filePathBed = file.path(projectFolderPath,"data/bed/pgx.grch38.5k.0p7percent.bed"))
 
-      }
 
-      #cleanup
-      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthTable<-NULL
-      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTable<-NULL
-      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTableCustom<-NULL
-      pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable<-NULL
+  for(iSample in 1:nrow(cSamples)){
+    #iSample<-1
+
+    cUniqueSampleId<-rownames(cSamples)[iSample]
+    #depth statistics if available (computed again above)
+    if(!is.null(pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable)){
+      cStats<-pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable
+      pgxrexObj$sampleMeta[cUniqueSampleId,c(
+        paste0("sdepth_q050.CYP2B6"),
+        paste0("sdepth_q050.CYP2C19"),
+        paste0("sdepth_q050.CYP2D6")
+      )]<-list(
+        cStats[cStats$label_region=="CYP2B6",c("sdepth_q050")],
+        cStats[cStats$label_region=="CYP2C19",c("sdepth_q050")],
+        cStats[cStats$label_region=="CYP2D6",c("sdepth_q050")]
+      )
+
+      catl("Extra depth information calculated for ",cUniqueSampleId)
 
     }
 
-
-    #pgxrexObj$sampleSettingsList[["p2-gtube_barcode01"]]$sequencingDepthRegionsTable
-
-    shru::writeFile(pgxrexObj$sampleMeta,file=file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv"),nThreads = 5)
+    #cleanup
+    pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthTable<-NULL
+    pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTable<-NULL
+    pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingDepthRegionsTableCustom<-NULL
+    pgxrexObj$sampleSettingsList[[cUniqueSampleId]]$sequencingStatsOriginalRegionsTable<-NULL
 
   }
 
+
+  #pgxrexObj$sampleSettingsList[["p2-gtube_barcode01"]]$sequencingDepthRegionsTable
+
+  shru::writeFile(pgxrexObj$sampleMeta,file=file.path(projectFolderPath,"work","pradaApp","per-sample-analysis","samples.tsv"),nThreads = 5)
+
 }
+
+
 
 #this only depends on the file/database metadata and does not index existing barcodes again
 for(iSample in 1:nrow(dSample)){
-  #iSample<-1
+  #iSample<-69
   cSampleID<-pgxrexObj$sampleMeta[iSample,c("barcode")]
   cUniqueSampleId<-rownames(pgxrexObj$sampleMeta)[iSample]
   cAnalysisID<-pgxrexObj$sampleMeta[iSample,c("analysis")]
   cPilotID<-pgxrexObj$analysisMeta[cAnalysisID,c("pilot_id")]
   cPathAnalysisOutput<-pgxrexObj$analysisMeta[cAnalysisID,c("pathAnalysisOutput")]
 
-  cat(paste0("\nSample ",cSampleID))
+  catl(paste0("Sample ",cSampleID))
 
   # dSampleVCF.result<-shru::supermunge(filePaths = file.path(projectFolderPath,cPathAnalysisOutput,"output",cSampleID,paste0(cSampleID,".filtered.vcf.gz")),traitNames = cSampleID,writeOutput = F)
   # dSampleVCF<-dSampleVCF.result$last
@@ -185,7 +200,9 @@ for(iSample in 1:nrow(dSample)){
   }
 
 
-
+  if(any(colnames(pgxrexObj$sampleMeta)=="mostCredibleReference")){
+    if(!is.na(pgxrexObj$sampleMeta[iSample,c("mostCredibleReference")])) next #only process empty rows
+  }
 
 
   mostCredibleReference<-"NA"
@@ -242,21 +259,24 @@ for(iSample in 1:nrow(dSample)){
 
   cat(paste0(": ",mostCredibleReference))
 
-  pgxrexObj$sampleMeta[iSample,c("mostCredibleReference",
+  pgxrexObj$sampleMeta[iSample,c("mostCredibleReference")]<-list(
+                                   mostCredibleReference)
+
+  if(is.na(knownReference)){
+    pgxrexObj$sampleMeta[iSample,c(
                     "evaluationRatio",
                     "mVCF",
                     "mConcordantREF.credible",
                     "mConcordantALT.credible",
                     "mDiscordantREF.credible",
                     "mDiscordantALT.credible")]<-list(
-                      mostCredibleReference,
                       ratioOfMostCredibleReference,
                       mVCF,
                       mConcordantREF.credible,
                       mConcordantALT.credible,
                       mDiscordantREF.credible,
                       mDiscordantALT.credible)
-
+  }
 
   filePathPGX<-file.path(projectFolderPath,"work","pradaApp", cPilotID ,paste0("pgxCallsAggCustom_",cAnalysisID,"_",cSampleID,".tsv")) #the pilot folder has to have the same name as the pilot ID.
   if(file.exists(filePathPGX)){
@@ -297,20 +317,22 @@ dSample<-fread(file.path(projectFolderPath,"work","pradaApp","per-sample-analysi
 # dSample[mostCredibleReference=="A",evaluationRatio:=(mConcordantREF.A+1000*mConcordantALT.A-mDiscordantREF.A-1000*mDiscordantALT.A)/mVCF.A]
 # dSample[mostCredibleReference=="B",evaluationRatio:=(mConcordantREF.B+1000*mConcordantALT.B-mDiscordantREF.B-1000*mDiscordantALT.B)/mVCF.B]
 # dSample[mostCredibleReference=="C",evaluationRatio:=(mConcordantREF.C+1000*mConcordantALT.C-mDiscordantREF.C-1000*mDiscordantALT.C)/mVCF.C]
-dSample[is.na(evaluationRatio),evaluationRatio:=1]
+dSample[is.na(evaluationRatio),evaluationRatio:=1] #fallback
+
+dSample.filtered<-dSample[evaluationRatio>=1,] #filter
 
 
 #remove duplicate samples
-dSample.n<-nrow(dSample)
-dSample$MERGEID<-1:dSample.n
+dSample.n<-nrow(dSample.filtered)
+dSample.filtered$MERGEID<-1:dSample.n
 
-dSample<-dSample[order(-evaluationRatio,MERGEID),]
-dSample.unique<-dSample[, .(MERGEID = head(MERGEID,1)), by = c("analysis","mostCredibleReference")]
-dSample.unique<-dSample[dSample.unique, on=c(MERGEID=c("MERGEID"))]
+dSample.filtered<-dSample.filtered[order(-evaluationRatio,MERGEID),]
+dSample.unique<-dSample.filtered[, .(MERGEID = head(MERGEID,1)), by = c("analysis","mostCredibleReference")]
+dSample.unique<-dSample.filtered[dSample.unique, on=c(MERGEID=c("MERGEID"))]
 
-dSequencing <- fread(file.path(projectFolderPath,"work","pradaApp","unified-plots","sampleMetaTot.tsv"))
+#dSequencing <- fread(file.path(projectFolderPath,"work","pradaApp","unified-plots","sampleMetaTot.tsv")) #we don't have to read in this separately now
 
-dSample.unique[dSequencing, on=c("analysis","barcode"), c("depth_on","depth_off"):=list(i.sdepth_q050_bed, i.sdepth_q050_nobed)]
+#dSample.unique[dSequencing, on=c("analysis","barcode"), c("depth_on","depth_off"):=list(i.sdepth_q050_bed, i.sdepth_q050_nobed)]
 dSample.unique[,label:=paste0(analysis,".",mostCredibleReference)]
 
 colnamesAllGeneCalls <- c("GC_ABCG2","GC_CACNA1S","GC_CFTR","GC_CYP2B6","GC_CYP2C19","GC_CYP2C9","GC_CYP2D6","GC_CYP3A4","GC_CYP3A5","GC_CYP4F2","GC_DPYD","GC_G6PD","GC_IFNL3","GC_NUDT15","GC_RYR1","GC_SLCO1B1","GC_TPMT","GC_UGT1A1","GC_VKORC1")
@@ -320,27 +342,101 @@ dSample.unique[,c("nCalls")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls],n
 dSample.unique[,c("nCalls.dep")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls.antidepressant],na.rm = T)
 dSample.unique[,sample:=mostCredibleReference]
 
+
+#data format of sdepth vars
+dSample.unique$sdepth_q050.CYP2B6<-as.numeric(dSample.unique$sdepth_q050.CYP2B6)
+dSample.unique$sdepth_q050.CYP2C19<-as.numeric(dSample.unique$sdepth_q050.CYP2C19)
+dSample.unique$sdepth_q050.CYP2D6<-as.numeric(dSample.unique$sdepth_q050.CYP2D6)
+
+#cumulative sums
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2B6,MERGEID),]
+#dSample.unique$GC_CYP2B6.cum<-cumsum(dSample.unique$GC_CYP2B6)
+#dSample.unique$sdepth_q050.CYP2B6<-as.factor(dSample.unique$sdepth_q050.CYP2B6)
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2C19,MERGEID),]
+#dSample.unique$GC_CYP2C19.cum<-cumsum(dSample.unique$GC_CYP2C19)
+#dSample.unique$sdepth_q050.CYP2C19<-as.factor(dSample.unique$sdepth_q050.CYP2C19)
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2D6,MERGEID),]
+#dSample.unique$GC_CYP2D6.cum<-cumsum(dSample.unique$GC_CYP2D6)
+#dSample.unique$sdepth_q050.CYP2D6<-as.factor(dSample.unique$sdepth_q050.CYP2D6)
+
 library(ggplot2)
 library(ggrepel)
 
-ggplot(dSample.unique, aes(x=depth_on, y=nCalls, color=sample, label=label)) +
+ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=nCalls, color=sample, label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAll.png")))
 
-ggplot(dSample.unique, aes(x=depth_on, y=nCalls.dep, color=sample, label=label)) +
+ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=nCalls.dep, color=sample, label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAntidepressant.png")))
+
+#custom CYP2B6
+
+ggplot(dSample.unique, aes(x=sdepth_q050.CYP2B6, y=GC_CYP2B6, color=sample, label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.png")))
+
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2B6,MERGEID),]
+ggplot(dSample.unique, aes(x= sdepth_q050.CYP2B6, y=cumsum(GC_CYP2B6), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.cum.png")))
+
+#custom CYP2C19
+ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=GC_CYP2C19, color=sample, label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.png")))
+
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2C19,MERGEID),]
+ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=cumsum(GC_CYP2C19), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.cum.png")))
+
+#custom CYP2D6
+ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=GC_CYP2D6, color=sample, label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.png")))
+
+dSample.unique<-dSample.unique[order(sdepth_q050.CYP2D6,MERGEID),]
+ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=cumsum(GC_CYP2D6), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.cum.png")))
 
 for(iGene in 1:length(colnamesAllGeneCalls)){
   #iGene<-1
   cCol<-colnamesAllGeneCalls[iGene]
-  ggplot(dSample.unique, aes(x=depth_on, y=UQ(as.name(cCol)), color=sample, label=label)) +
+  ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=UQ(as.name(cCol)), color=sample, label=label)) +
     geom_point() +
     geom_line() +
     geom_text_repel(size = 2) +

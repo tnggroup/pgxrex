@@ -342,22 +342,22 @@ dSample.unique[,c("nCalls")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls],n
 dSample.unique[,c("nCalls.dep")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls.antidepressant],na.rm = T)
 dSample.unique[,sample:=mostCredibleReference]
 
-
-#data format of sdepth vars
-dSample.unique$sdepth_q050.CYP2B6<-as.numeric(dSample.unique$sdepth_q050.CYP2B6)
-dSample.unique$sdepth_q050.CYP2C19<-as.numeric(dSample.unique$sdepth_q050.CYP2C19)
-dSample.unique$sdepth_q050.CYP2D6<-as.numeric(dSample.unique$sdepth_q050.CYP2D6)
-
-#cumulative sums
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2B6,MERGEID),]
-#dSample.unique$GC_CYP2B6.cum<-cumsum(dSample.unique$GC_CYP2B6)
-#dSample.unique$sdepth_q050.CYP2B6<-as.factor(dSample.unique$sdepth_q050.CYP2B6)
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2C19,MERGEID),]
-#dSample.unique$GC_CYP2C19.cum<-cumsum(dSample.unique$GC_CYP2C19)
-#dSample.unique$sdepth_q050.CYP2C19<-as.factor(dSample.unique$sdepth_q050.CYP2C19)
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2D6,MERGEID),]
-#dSample.unique$GC_CYP2D6.cum<-cumsum(dSample.unique$GC_CYP2D6)
-#dSample.unique$sdepth_q050.CYP2D6<-as.factor(dSample.unique$sdepth_q050.CYP2D6)
+#
+# #data format of sdepth vars
+# dSample.unique$sdepth_q050.CYP2B6<-as.numeric(dSample.unique$sdepth_q050.CYP2B6)
+# dSample.unique$sdepth_q050.CYP2C19<-as.numeric(dSample.unique$sdepth_q050.CYP2C19)
+# dSample.unique$sdepth_q050.CYP2D6<-as.numeric(dSample.unique$sdepth_q050.CYP2D6)
+#
+# #cumulative sums
+# dSample.unique<-dSample.unique[order(sdepth_q050.CYP2B6,MERGEID),]
+# #dSample.unique$GC_CYP2B6.cum<-cumsum(dSample.unique$GC_CYP2B6)
+# #dSample.unique$sdepth_q050.CYP2B6<-as.factor(dSample.unique$sdepth_q050.CYP2B6)
+# dSample.unique<-dSample.unique[order(sdepth_q050.CYP2C19,MERGEID),]
+# #dSample.unique$GC_CYP2C19.cum<-cumsum(dSample.unique$GC_CYP2C19)
+# #dSample.unique$sdepth_q050.CYP2C19<-as.factor(dSample.unique$sdepth_q050.CYP2C19)
+# dSample.unique<-dSample.unique[order(sdepth_q050.CYP2D6,MERGEID),]
+# #dSample.unique$GC_CYP2D6.cum<-cumsum(dSample.unique$GC_CYP2D6)
+# #dSample.unique$sdepth_q050.CYP2D6<-as.factor(dSample.unique$sdepth_q050.CYP2D6)
 
 library(ggplot2)
 library(ggrepel)
@@ -397,6 +397,15 @@ ggplot(dSample.unique, aes(x= sdepth_q050.CYP2B6, y=cumsum(GC_CYP2B6), label=lab
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.cum.png")))
 
+dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2B6,MERGEID),]
+ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2B6-1)), y=cumsum(GC_CYP2B6), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  #scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.roc.png")))
+
 #custom CYP2C19
 ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=GC_CYP2C19, color=sample, label=label)) +
   geom_point() +
@@ -414,6 +423,16 @@ ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=cumsum(GC_CYP2C19), label=la
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.cum.png")))
+
+dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2C19,MERGEID),]
+ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2C19-1)), y=cumsum(GC_CYP2C19), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  #scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.roc.png")))
+
 
 #custom CYP2D6
 ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=GC_CYP2D6, color=sample, label=label)) +
@@ -433,13 +452,22 @@ ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=cumsum(GC_CYP2D6), label=labe
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.cum.png")))
 
-for(iGene in 1:length(colnamesAllGeneCalls)){
-  #iGene<-1
-  cCol<-colnamesAllGeneCalls[iGene]
-  ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=UQ(as.name(cCol)), color=sample, label=label)) +
-    geom_point() +
-    geom_line() +
-    geom_text_repel(size = 2) +
-    theme_light()
-  ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCalls_",cCol,".png")))
-}
+dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2D6,MERGEID),]
+ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2D6-1)), y=cumsum(GC_CYP2D6), label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  #scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.roc.png")))
+#
+# for(iGene in 1:length(colnamesAllGeneCalls)){
+#   #iGene<-1
+#   cCol<-colnamesAllGeneCalls[iGene]
+#   ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=UQ(as.name(cCol)), color=sample, label=label)) +
+#     geom_point() +
+#     geom_line() +
+#     geom_text_repel(size = 2) +
+#     theme_light()
+#   ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCalls_",cCol,".png")))
+# }

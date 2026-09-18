@@ -193,6 +193,15 @@ PgxrexPgDatabaseUtilityClass$methods(
   }
 )
 
+PgxrexPgDatabaseUtilityClass$methods(
+  selectChromosomeInformation=function(){
+    qString <- "SELECT * FROM prada.chromosome"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+    return(res)
+  }
+)
 
 
 #should be used with care as it passes the data by value rather than reference

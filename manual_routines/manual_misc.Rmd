@@ -343,6 +343,8 @@ sbatch --time 2:00:00 --partition interruptible_cpu --job-name="plots" --ntasks 
 
 sbatch --time 8:00:00 --partition interruptible_cpu --job-name="spider" --ntasks 1 --cpus-per-task 6 --mem 256G --wrap="Rscript /scratch/prj/sgdp_nanopore/Projects/prada_jz/src-r/truth-concordance.R" --output "truth-concordance.$(date +%Y%m%d).out.txt"
 
+Rscript /scratch/prj/sgdp_nanopore/Projects/prada_jz/src-r/pgxrex_pgx_score_simulation.R
+
 
 ```
 

@@ -208,6 +208,84 @@ SELECT DISTINCT ehrpriority
 
 */
 
+--DROP VIEW prada.harmonised_cpic_pgx_ancestry_eur;
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_eur
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'European')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'European')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'European')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_eas
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'East Asian')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'East Asian')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'East Asian')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_amlathis
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'Latino')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'Latino')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'Latino')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_cassas
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'Central/South Asian')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'Central/South Asian')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'Central/South Asian')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_afr
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'Sub-Saharan African')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'Sub-Saharan African')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'Sub-Saharan African')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_amcarafr
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'African American/Afro-Caribbean')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'African American/Afro-Caribbean')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'African American/Afro-Caribbean')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
+CREATE OR REPLACE VIEW prada.harmonised_cpic_pgx_ancestry_gme
+AS
+WITH pgx AS (
+SELECT DISTINCT ON (g.chr, g.genesymbol, g.diplotype) 
+g.chr, g.genesymbol, g.diplotype, g.result, 
+(g.diplotype_frequency ->> 'Near Eastern')::numeric diplotype_frequency_pop, (g.allele1_frequency ->> 'Near Eastern')::numeric allele1_frequency_pop, (g.allele2_frequency ->> 'Near Eastern')::numeric allele2_frequency_pop
+FROM prada.harmonised_cpic_pgx g)
+SELECT pgx.*,
+COALESCE(pgx.diplotype_frequency_pop, 2*pgx.allele1_frequency_pop*pgx.allele2_frequency_pop) consensus_allele_frequency
+FROM pgx;
+
 
 --DROP MATERIALIZED VIEW prada.harmonised_gene;
 CREATE MATERIALIZED VIEW prada.harmonised_gene --OR REPLACE

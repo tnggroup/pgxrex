@@ -349,14 +349,15 @@ $$ LANGUAGE plpgsql;
 -- example play input - this may actually be necessary to run before creating the function
 DROP TABLE IF EXISTS t_gene_diplotype_input;
 CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
-SELECT 'CYP2D6' AS gene, '*33' AS a1, '*148' AS a2
+SELECT 'CYP2D6' AS gene, '*2/*4' AS diplotype
 	UNION ALL
-	SELECT 'CYP2B6','*8','*45'
+	SELECT 'CYP2B6','*4/*6'
 	UNION ALL
-	SELECT 'CYP2C19', '*2', '*24'
-	UNION ALL
-	SELECT 'TPMT', '*4', '*14';
+	SELECT 'CYP2C19', '*1/*17';
+--	UNION ALL
+--	SELECT 'TPMT', '*4/*14';
 
+/*
 DROP TABLE IF EXISTS t_drug_input;
 CREATE TEMP TABLE IF NOT EXISTS t_drug_input AS
 SELECT 'RxNorm:5640' AS drugid
@@ -368,30 +369,166 @@ SELECT 'RxNorm:5640' AS drugid
 	SELECT 'RxNorm:36437'
 	UNION ALL
 	SELECT 'RxNorm:1256'; --azathioprine
+	*/
 
 
 --DROP FUNCTION prada.get_application_recommendation;
--- PLACEHOLDER FUNCTION, TO BE UPDATED
 CREATE OR REPLACE FUNCTION prada.get_application_recommendation() RETURNS TABLE(
-name text,
-genesymbol text,
+drug_name text,
+--guidelineid numeric,
+--cpiclevel text,
+gene_name text,
+diplotype text,
 result text,
-consultationtext text,
+--activityscore text,
+--recommendation numeric,
+--ehrpriority text,
+--drugrecommendation text,
+--phenotypes jsonb,
+phenotype_cyp2b6 text,
+phenotype_cyp2c19 text,
+phenotype_cyp2d6 text,
+phenotype_other numeric,
+--classification text,
+--prada_ehrpriority_num numeric,
 prada_cpiclevel_num numeric,
-prada_pgkbcalevel_num numeric,
-prada_ehrpriority_num numeric
+--prada_pgkbcalevel_num numeric,
+prada_start_dose text,
+prada_target_dose text,
+prada_titration_speed text,
+prada_switch_drug text,
+prada_switch1_drug text,
+prada_switch1_gene text,
+prada_switch2_drug text,
+prada_switch2_gene text,
+prada_tdm text,
+prada_recommendation_version numeric,
+dipcyp2b6_check integer,
+dipcyp2c19_check integer,
+dipcyp2d6_check integer
 ) AS $$
 	
-	SELECT pg.drug_name, pg.gene_name, pg.result, pg.consultationtext, pg.prada_cpiclevel_num, pg.prada_pgkbcalevel_num, pg.prada_ehrpriority_num
-	FROM prada.combined_pgx pg --pg.*
-	INNER JOIN (SELECT t_gene_diplotype_input.*, t_gene_diplotype_input.a1 || '/'|| t_gene_diplotype_input.a2 AS diplotype FROM t_gene_diplotype_input) hcdata ON hcdata.gene = pg.gene_name AND hcdata.diplotype = pg.diplotype
+	WITH rec2 AS (
+	WITH rec AS (
+		SELECT 
+		pgx.drug_name,
+		pgx.pharmgkbid,
+		pgx.rxnormid,
+		pgx.drugbankid,
+		pgx.atcid,
+		pgx.flowchart,
+		pgx.version,
+		pgx.guidelineid,
+		pgx.cpiclevel,
+		pgx.pgkbcalevel,
+		pgx.usedforrecommendation,
+		pgx.guideline_name,
+		pgx.guideline_url,
+		pgx.gene_name,
+		pgx.diplotype,
+		pgx.result,
+		pgx.activityscore,
+		pgx.recommendation,
+		pgx.description,
+		pgx.ehrpriority,
+		pgx.consultationtext,
+		pgx.diplotype_frequency,
+		pgx.allele1,
+		pgx.allele2,
+		pgx.allele1_frequency,
+		pgx.allele2_frequency,
+		pgx.implications,
+		pgx.drugrecommendation,
+		pgx.phenotypes,
+		(pgx.phenotypes ->> 'CYP2B6')::text phenotype_cyp2b6,
+		(pgx.phenotypes ->> 'CYP2C19')::text phenotype_cyp2c19,
+		(pgx.phenotypes ->> 'CYP2D6')::text phenotype_cyp2d6,
+		(
+		CASE
+			WHEN pgx.gene_name='CYP2B6' THEN 0
+			WHEN pgx.gene_name='CYP2C19' THEN 0
+			WHEN pgx.gene_name='CYP2D6' THEN 0
+			ELSE 1
+			END
+		) AS phenotype_other,
+		pgx.classification,
+		pgx.population,
+		pgx.comments,
+		pgx.prada_ehrpriority_num,
+		pgx.prada_cpiclevel_num,
+		pgx.prada_pgkbcalevel_num,
+		pr.prada_start_dose,
+		pr.prada_target_dose,
+		pr.prada_titration_speed,
+		pr.prada_switch_drug,
+		pr.prada_switch1_drug,
+		pr.prada_switch1_gene,
+		pr.prada_switch2_drug,
+		pr.prada_switch2_gene,
+		pr.prada_tdm,
+		pr.version prada_recommendation_version
+		
+		
+	--SELECT *
+	FROM prada.harmonised_combined_pgx pgx
+	INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+	INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
+	LEFT OUTER JOIN prada.recommendation pr ON pgx.recommendation = pr.recommendation AND pgx.guidelineid = pr.guideline AND pgx.drug_name = pr.drugid AND pgx.gene_name = pr.gene_name
+	WHERE pgx.recommendation IS NOT NULL
+	),
+	dip AS (
+	SELECT DISTINCT ON (pgx.drug_name,pgx.gene_name,pgx.diplotype,pgx.result,pgx.activityscore) pgx.drug_name,pgx.gene_name,pgx.diplotype,pgx.result,pgx.activityscore
+	FROM prada.harmonised_combined_pgx pgx
+	INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+	INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
+	)
+	SELECT rec.*, (dipcyp2b6.result IS NOT NULL)::integer AS dipcyp2b6_check, (dipcyp2c19.result IS NOT NULL)::integer AS dipcyp2c19_check, (dipcyp2d6.result IS NOT NULL)::integer AS dipcyp2d6_check FROM rec
+	LEFT OUTER JOIN dip dipcyp2b6 ON rec.drug_name = dipcyp2b6.drug_name 
+		AND dipcyp2b6.gene_name='CYP2B6' AND rec.gene_name=dipcyp2b6.gene_name AND rec.phenotype_cyp2b6=dipcyp2b6.result
+	LEFT OUTER JOIN dip dipcyp2c19 ON rec.drug_name = dipcyp2c19.drug_name 
+		AND dipcyp2c19.gene_name='CYP2C19' AND rec.gene_name=dipcyp2c19.gene_name AND rec.phenotype_cyp2c19=dipcyp2c19.result
+	LEFT OUTER JOIN dip dipcyp2d6 ON rec.drug_name = dipcyp2d6.drug_name 
+		AND dipcyp2d6.gene_name='CYP2D6' AND rec.gene_name=dipcyp2d6.gene_name AND rec.phenotype_cyp2d6=dipcyp2d6.result
+	--ORDER BY drug_name,gene_name,diplotype,cpiclevel,classification,guidelineid
+
+	--ORDER BY rec.drug_name,rec.phenotype_cyp2b6,rec.phenotype_cyp2c19,rec.phenotype_cyp2d6,rec.phenotype_other
+	)
+	SELECT
+	rec2.drug_name,
+	rec2.gene_name,
+	rec2.diplotype,
+	rec2.result,
+	rec2.phenotype_cyp2b6,
+	rec2.phenotype_cyp2c19,
+	rec2.phenotype_cyp2d6,
+	rec2.phenotype_other,
+	rec2.prada_cpiclevel_num,
+	rec2.prada_start_dose,
+	rec2.prada_target_dose,
+	rec2.prada_titration_speed,
+	rec2.prada_switch_drug,
+	rec2.prada_switch1_drug,
+	rec2.prada_switch1_gene,
+	rec2.prada_switch2_drug,
+	rec2.prada_switch2_gene,
+	rec2.prada_tdm,
+	rec2.prada_recommendation_version,
+	rec2.dipcyp2b6_check,
+	rec2.dipcyp2c19_check,
+	rec2.dipcyp2d6_check
+	
+	FROM rec2
+	WHERE 
+		(phenotype_cyp2b6 IS NULL OR dipcyp2b6_check=1) AND (phenotype_cyp2c19 IS NULL OR dipcyp2c19_check=1) AND (phenotype_cyp2d6 IS NULL OR dipcyp2d6_check = 1)
+	ORDER BY drug_name,gene_name,diplotype,cpiclevel,classification,guidelineid;
 	--INNER JOIN t_drug_input d ON d.drugid=pg.drugid
-	WHERE prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0 OR prada_ehrpriority_num > 1
-	AND (pgkbcalevel = '1A' OR pgkbcalevel = '1B' OR pgkbcalevel = '2A' OR pgkbcalevel = '2B');
+	--WHERE prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0 OR prada_ehrpriority_num > 1
+	--AND (pgkbcalevel = '1A' OR pgkbcalevel = '1B' OR pgkbcalevel = '2A' OR pgkbcalevel = '2B');
 	-- AND cpiclevel = 'A'
 	-- AND ehrpriority != 'none';
 
 $$ LANGUAGE sql;
 
 --SELECT * FROM prada.get_application_recommendation();
+
 

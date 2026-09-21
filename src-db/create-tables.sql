@@ -54,7 +54,7 @@ CREATE UNIQUE INDEX drug_u ON prada.drug (rxnormid,name);
 ALTER TABLE prada.drug
   ADD CONSTRAINT drug_pkey PRIMARY KEY (name);
 ALTER TABLE prada.drug
-	ADD COLUMN selected_for_prada smallint;
+	ADD COLUMN selected_for_analysis smallint;
 
 -- DROP TABLE prada.recommendation;
 CREATE TABLE prada.recommendation

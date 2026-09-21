@@ -45,6 +45,15 @@ UPDATE prada.pgx_gene pg SET "Gene"='GBA1' WHERE "Gene"='GBA';
 --insert drug data
 --pharmgkb cancer - cancer_drugs_pharmgkb.tsv
 INSERT INTO prada.drug(name,type,weight) SELECT cdp.drug, 'cancer',0.5 FROM prada.cancer_drugs_pharmgkb cdp;
+--Set initial set of drug selections
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='amitriptyline';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='citalopram';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='escitalopram';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='fluvoxamine';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='paroxetine';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='sertraline';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='venlafaxine';
+UPDATE prada.drug d SET "selected_for_analysis"=1 WHERE "name"='vortioxetine';
 
 --insert IDP GWAS data
 INSERT INTO prada.variant(type,snp,chr,bp,bp2,mdd_p,mdd_beta,mdd_beta_se,mdd_beta_n) SELECT d.type, d.snp, d.chr, d.bp, d.bp2, d.mdd_p, d.mdd_beta, d.mdd_beta_se, d.mdd_n FROM prada.idp38_import d;
@@ -89,6 +98,8 @@ FROM postgres.prada_cpic_pgx_variables_coded_20260120 d
 LEFT OUTER JOIN prada.harmonised_combined_pgx hcpgx ON hcpgx.recommendation =d.recommendation AND d.drug_name  =hcpgx.drug_name AND d.guidelineid = hcpgx.guidelineid AND d.implications::jsonb = hcpgx.implications;
 CREATE UNIQUE INDEX t_drug_recommendations_import_u ON t_drug_recommendations_import (recommendation,guidelineid ,drug_name,gene_name,rn);
 
+
+--Import data first into t_drug_recommendations_import
 INSERT INTO prada.recommendation(
 recommendation,
 guideline,
@@ -129,6 +140,12 @@ FROM t_drug_recommendations_import m
 WHERE m.recommendation IS NOT NULL AND m.rn =1
 --ORDER BY m.recommendation,m.guidelineid ,m.drug_name
 ;
+
+
+
+
+
+--Experiments with transferring recommendations across CPIC database versions
 
 ----SELECT * FROM prada.recommendation rec WHERE rec.recommendation = 5991110;
 --SELECT

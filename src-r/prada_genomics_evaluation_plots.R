@@ -38,6 +38,117 @@ dSample.unique[,c("nCalls.dep")] <-rowSums(dSample.unique[,..colnamesAllGeneCall
 dSample.unique[,sample:=mostCredibleReference]
 
 
+#Score density plots
+dScore<-shru::readFile(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.txt")))
+
+#dScore[,score:=score+1] #shift score +1
+
+setorder(dScore, score, weight, id)
+dScore[,order:=.I]
+
+
+ggplot(data = dScore, aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="sertraline",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score",
+       #color="Ancestry"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill") +
+  scale_fill_discrete(name='Ancestry',labels=c("Sub-Saharan African", "African American/Afro-Caribbean","Latino","Central/South Asian","East Asian","European","Near Eastern")) +
+  scale_color_discrete(name='Ancestry',labels=c("Sub-Saharan African", "African American/Afro-Caribbean","Latino","Central/South Asian","East Asian","European","Near Eastern"))
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.sertraline.png")), units = "mm", width = 300, height = 150, scale = 0.40)
+
+ggplot(data = dScore[drug_name=="paroxetine",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.paroxetine.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="amitriptyline",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.amitriptyline.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="citalopram",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.citalopram.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="escitalopram",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.escitalopram.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="fluvoxamine",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.fluvoxamine.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="venlafaxine",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.venlafaxine.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+ggplot(data = dScore[drug_name=="vortioxetine",], aes(x=score, group=ancestry, color=ancestry, fill = ancestry)) + #[drug_name=="sertraline",]
+  #geom_density(position="stack")
+  #scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Density (relative)",
+       x = "Score"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_density(position="fill")
+ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("ancestry_score_density.vortioxetine.png")), units = "mm", width = 300, height = 300, scale = 0.60)
+
+
 #Samtools stats
 
 #genomeLengthSettingBp <- 3088269832

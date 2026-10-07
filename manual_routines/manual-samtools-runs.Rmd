@@ -1,0 +1,26 @@
+---
+title: "Manual samtools stats runs"
+author: "Johan Zvrskovec"
+date: "2026-09-17"
+output: html_document
+---
+
+
+```{bash}
+
+samtools stats /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam > PradaA.haplotagged.bam.stats
+
+samtools view --threads 6 -h -L /users/k2481717/project/prada_jz/data/bed/pgx.grch38.padded_100k.ss.bed -U inverted.regions.bam /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam
+
+sbatch --time 24:00:00 --partition interruptible_cpu --job-name="A" --ntasks 1 --cpus-per-task 6 --mem 16G --wrap="samtools stats --threads 6 /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam > PradaA.haplotagged.bam.stats" --output "samtools.PradaA.$(date +%Y%m%d).out.txt"
+
+sbatch --time 24:00:00 --partition interruptible_cpu --job-name="A.t" --ntasks 1 --cpus-per-task 6 --mem 16G --wrap="samtools stats --threads 6  -t /users/k2481717/project/prada_jz/data/bed/pgx.grch38.padded_100k.ss.bed /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam  > PradaA.haplotagged.bam.ontarget.stats; cat PradaA.haplotagged.bam.ontarget.stats | grep ^SN | cut -f 2- > PradaA.haplotagged.bam.ontarget.stats.sn.txt; cat PradaA.haplotagged.bam.ontarget.stats | grep ^RL | cut -f 2- > PradaA.haplotagged.bam.ontarget.stats.rl.txt;" --output "samtools.PradaA.ontarget.$(date +%Y%m%d).out.txt"
+
+
+sbatch --time 24:00:00 --partition interruptible_cpu --job-name="A.ot" --ntasks 1 --cpus-per-task 6 --mem 16G --wrap="samtools view --threads 6 -h -L /users/k2481717/project/prada_jz/data/bed/pgx.grch38.padded_100k.ss.bed -U /dev/stdout /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam | samtools stats --threads 6 - > PradaA.haplotagged.bam.stats.offtarget" --output "samtools.PradaA.offtarget.$(date +%Y%m%d).out.txt"
+
+sbatch --time 24:00:00 --partition interruptible_cpu --job-name="A.ot" --ntasks 1 --cpus-per-task 6 --mem 16G --wrap="samtools view --threads 6 -h -L /users/k2481717/project/prada_jz/data/bed/pgx.grch38.padded_100k.ss.bed --unoutput PradaA.haplotagged.unoutput.bam /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam" --output "samtools.PradaA.offtarget.$(date +%Y%m%d).out.txt"
+
+sbatch --time 24:00:00 --partition interruptible_cpu --job-name="A.ot" --ntasks 1 --cpus-per-task 6 --mem 16G --wrap="samtools stats --threads 6  -t /users/k2481717/project/prada_jz/data/bed/pgx.grch38.padded_100k.ss.inverted.bed /users/k2481717/project/prada_jz/work/pgx/pilot10/output/PradaA/PradaA.haplotagged.bam  > PradaA.haplotagged.bam.offtarget.stats; cat PradaA.haplotagged.bam.offtarget.stats | grep ^SN | cut -f 2- > PradaA.haplotagged.bam.offtarget.stats.sn.txt; cat PradaA.haplotagged.bam.offtarget.stats | grep ^RL | cut -f 2- > PradaA.haplotagged.bam.offtarget.stats.rl.txt;" --output "samtools.PradaA.offtarget.$(date +%Y%m%d).out.txt"
+
+```

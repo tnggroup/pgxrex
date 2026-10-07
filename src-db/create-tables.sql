@@ -78,6 +78,7 @@ CREATE TABLE prada.recommendation
 	version integer
 );
 COMMENT ON TABLE prada.recommendation IS 'Custom project data on clinical recommendations. Complement to primarily the cpic.recommendation table.';
+CREATE INDEX recommendation_i ON prada.recommendation (recommendation,guideline,drugid,gene_name);
 --CREATE UNIQUE INDEX recommendation_u ON prada.recommendation (recommendation,guideline,drugid,gene_name);
 ALTER TABLE prada.recommendation
   ADD CONSTRAINT recommendation_pkey PRIMARY KEY (recommendation,guideline,drugid,gene_name);

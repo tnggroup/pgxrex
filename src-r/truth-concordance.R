@@ -342,6 +342,39 @@ dSample.unique[,c("nCalls")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls],n
 dSample.unique[,c("nCalls.dep")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls.antidepressant],na.rm = T)
 dSample.unique[,sample:=mostCredibleReference]
 
+#adjust p4-1 as this was sequenced twice
+dSample.unique[analysis=="p4-1" & barcode=="barcode01",c("sdepth_q000_bed",
+                                                                 "sdepth_q002_bed",
+                                                                 "sdepth_q025_bed",
+                                                                 "sdepth_q050_bed",
+                                                                 "sdepth_q075_bed",
+                                                                 "sdepth_q098_bed",
+                                                                 "sdepth_q100_bed",
+                                                                 "sdepth_q000_nobed",
+                                                                 "sdepth_q002_nobed",
+                                                                 "sdepth_q025_nobed",
+                                                                 "sdepth_q050_nobed",
+                                                                 "sdepth_q075_nobed",
+                                                                 "sdepth_q098_nobed",
+                                                                 "sdepth_q100_nobed")]<-dSample.unique[analysis=="p4-1" & barcode=="barcode01",c("sdepth_q000_bed",
+                                                                                                                                                         "sdepth_q002_bed",
+                                                                                                                                                         "sdepth_q025_bed",
+                                                                                                                                                         "sdepth_q050_bed",
+                                                                                                                                                         "sdepth_q075_bed",
+                                                                                                                                                         "sdepth_q098_bed",
+                                                                                                                                                         "sdepth_q100_bed",
+                                                                                                                                                         "sdepth_q000_nobed",
+                                                                                                                                                         "sdepth_q002_nobed",
+                                                                                                                                                         "sdepth_q025_nobed",
+                                                                                                                                                         "sdepth_q050_nobed",
+                                                                                                                                                         "sdepth_q075_nobed",
+                                                                                                                                                         "sdepth_q098_nobed",
+                                                                                                                                                         "sdepth_q100_nobed")]/2
+
+
+dSample.unique.as_only<-dSample.unique[analysis %in% c("p9-w","p9-nw","p8-wob","p8-nwob","p6-1","p4-1","p3-1","p2-nogtube","p2-gtube","p13-8kb","p13-15kb","p10"),]
+
+
 #
 # #data format of sdepth vars
 # dSample.unique$sdepth_q050.CYP2B6<-as.numeric(dSample.unique$sdepth_q050.CYP2B6)
@@ -370,6 +403,14 @@ ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=nCalls, color=sample, label=labe
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAll.png")))
 
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050_bed, y=nCalls, color=sample, label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAllAS.png")))
+
 ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=nCalls.dep, color=sample, label=label)) +
   geom_point() +
   geom_line() +
@@ -378,9 +419,17 @@ ggplot(dSample.unique, aes(x=sdepth_q050_bed, y=nCalls.dep, color=sample, label=
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAntidepressant.png")))
 
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050_bed, y=nCalls.dep, color=sample, label=label)) +
+  geom_point() +
+  geom_line() +
+  geom_text_repel(size = 2) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_light()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsAntidepressantAS.png")))
+
 #custom CYP2B6
 
-ggplot(dSample.unique, aes(x=sdepth_q050.CYP2B6, y=GC_CYP2B6, color=sample, label=label)) +
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050.CYP2B6, y=GC_CYP2B6, color=sample, label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
@@ -388,17 +437,21 @@ ggplot(dSample.unique, aes(x=sdepth_q050.CYP2B6, y=GC_CYP2B6, color=sample, labe
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.png")))
 
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2B6,MERGEID),]
-ggplot(dSample.unique, aes(x= sdepth_q050.CYP2B6, y=cumsum(GC_CYP2B6), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(sdepth_q050.CYP2B6,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x= sdepth_q050.CYP2B6, y=cumsum(GC_CYP2B6), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(limits = c(0, 110), breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(limits = c(0, 25), breaks = scales::pretty_breaks(n = 10)) +
+  labs(y = "Cumulative Truth (=1) call",
+       x = "Depth",
+       title = "CYP2B6") +
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.cum.png")))
 
-dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2B6,MERGEID),]
-ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2B6-1)), y=cumsum(GC_CYP2B6), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(-sdepth_q050.CYP2B6,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x= cumsum(abs(GC_CYP2B6-1)), y=cumsum(GC_CYP2B6), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
@@ -407,7 +460,7 @@ ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2B6-1)), y=cumsum(GC_CYP2B6), lab
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2B6.roc.png")))
 
 #custom CYP2C19
-ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=GC_CYP2C19, color=sample, label=label)) +
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050.CYP2C19, y=GC_CYP2C19, color=sample, label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
@@ -415,17 +468,21 @@ ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=GC_CYP2C19, color=sample, la
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.png")))
 
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2C19,MERGEID),]
-ggplot(dSample.unique, aes(x=sdepth_q050.CYP2C19, y=cumsum(GC_CYP2C19), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(sdepth_q050.CYP2C19,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050.CYP2C19, y=cumsum(GC_CYP2C19), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(limits = c(0, 110), breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(limits = c(0, 25), breaks = scales::pretty_breaks(n = 10)) +
+  labs(y = "Cumulative Truth (=1) call",
+       x = "Depth",
+       title = "CYP2C19") +
   theme_light()
 ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2C19.cum.png")))
 
-dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2C19,MERGEID),]
-ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2C19-1)), y=cumsum(GC_CYP2C19), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(-sdepth_q050.CYP2C19,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x= cumsum(abs(GC_CYP2C19-1)), y=cumsum(GC_CYP2C19), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
@@ -435,25 +492,29 @@ ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste
 
 
 #custom CYP2D6
-ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=GC_CYP2D6, color=sample, label=label)) +
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050.CYP2D6, y=GC_CYP2D6, color=sample, label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_light()
-ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.png")))
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.png")),)
 
-dSample.unique<-dSample.unique[order(sdepth_q050.CYP2D6,MERGEID),]
-ggplot(dSample.unique, aes(x=sdepth_q050.CYP2D6, y=cumsum(GC_CYP2D6), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(sdepth_q050.CYP2D6,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x=sdepth_q050.CYP2D6, y=cumsum(GC_CYP2D6), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(limits = c(0, 110), breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(limits = c(0, 20), breaks = scales::pretty_breaks(n = 10)) + #Note, unique y-axis limit
+  labs(y = "Cumulative Truth (=1) call",
+       x = "Depth",
+       title = "CYP2D6") +
   theme_light()
-ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.cum.png")))
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.cum.png")),units = "mm", width = 300, height = 350, scale = 0.30)
 
-dSample.unique<-dSample.unique[order(-sdepth_q050.CYP2D6,MERGEID),]
-ggplot(dSample.unique, aes(x= cumsum(abs(GC_CYP2D6-1)), y=cumsum(GC_CYP2D6), label=label)) +
+dSample.unique.as_only<-dSample.unique.as_only[order(-sdepth_q050.CYP2D6,MERGEID),]
+ggplot(dSample.unique.as_only, aes(x= cumsum(abs(GC_CYP2D6-1)), y=cumsum(GC_CYP2D6), label=label)) +
   geom_point() +
   geom_line() +
   geom_text_repel(size = 2) +
@@ -471,3 +532,82 @@ ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste
 #     theme_light()
 #   ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCalls_",cCol,".png")))
 # }
+
+#nope
+# dSample.unique.as_only.gene.combined<-rbindlist(list(
+#   dSample.unique.as_only[,.(analysis,barcode,sdepth_q050.CYP2B6,GC_CYP2B6,label,MERGEID)][,gene_depth:=sdepth_q050.CYP2B6][,sdepth_q050.CYP2B6:=NULL][,gene_call:=GC_CYP2B6][,gene:="CYP2B6"],
+#   dSample.unique.as_only[,.(analysis,barcode,sdepth_q050.CYP2C19,GC_CYP2C19,label,MERGEID)][,gene_depth:=sdepth_q050.CYP2C19][,sdepth_q050.CYP2C19:=NULL][,gene_call:=GC_CYP2C19][,gene:="CYP2C19"],
+#   dSample.unique.as_only[,.(analysis,barcode,sdepth_q050.CYP2D6,GC_CYP2D6,label,MERGEID)][,gene_depth:=sdepth_q050.CYP2D6][,sdepth_q050.CYP2D6:=NULL][,gene_call:=GC_CYP2D6][,gene:="CYP2D6"]
+#   ),use.names = T,fill = T)
+#
+# dSample.unique.as_only.gene.combined<-dSample.unique.as_only.gene.combined[order(gene_depth,MERGEID),]
+# ggplot(dSample.unique.as_only.gene.combined, aes(x=gene_depth, y=cumsum(gene_call), label=label, group = gene)) +
+#   geom_point() +
+#   geom_line() +
+#   geom_text_repel(size = 2) +
+#   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+#   theme_light()
+# ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("trueCallsCYP2D6.cum.png")))
+
+
+dSample.unique.as_only.bed<-dSample.unique.as_only[,.(analysis,barcode,sdepth_q050_bed)]
+dSample.unique.as_only.nobed<-dSample.unique.as_only[,.(analysis,barcode,sdepth_q050_nobed)]
+colnames(dSample.unique.as_only.bed)<-colnames(dSample.unique.as_only.nobed)<-c("analysis","barcode","depth")
+dSample.unique.as_only.bed[,AS:="ontarget"]
+dSample.unique.as_only.nobed[,AS:="offtarget"]
+
+dSample.unique.as_only.target.combined<-rbindlist(list(dSample.unique.as_only.bed,dSample.unique.as_only.nobed),use.names = T,fill = T)
+dSample.unique.as_only.target.combined[,group_all_vs_promplus:=paste0("prom_",AS)]
+dSample.unique.as_only.target.combined[analysis=="p13-8kb" | analysis=="p13-15kb",group_all_vs_promplus:=paste0("promplus_",AS)]
+
+
+ggplot(data = dSample.unique.as_only, aes(x = sdepth_q050_bed)) +
+  geom_histogram(bins = 20, color = "black", fill = "gray",aes(y = ..count..)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(y = "Count",
+       x = "Depth",
+       title = "")
+
+ggplot(data = dSample.unique.as_only, aes(x = sdepth_q050_nobed)) +
+  geom_histogram(bins = 15, color = "black", fill = "gray",aes(y = ..count..)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(y = "Count",
+       x = "Depth",
+       title = "")
+
+
+
+ggplot(data = dSample.unique.as_only, aes(y = sdepth_q050_nobed)) +
+  geom_boxplot()
+
+ggplot(data = dSample.unique.as_only, aes(y = sdepth_q050_bed)) +
+  geom_boxplot()
+
+ggplot(data = dSample.unique.as_only.target.combined, aes(y = depth, x=AS)) +
+  #scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_discrete(limits=c('ontarget','offtarget'),labels=c("On target","Off target")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 50)) +
+  labs(y = "Depth",
+       x = "Adaptive sampling"
+       #title = ""
+       ) +
+  theme_light() +
+  geom_boxplot()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("as_ontarget_offtarget_box.png")))
+
+ggplot(data = dSample.unique.as_only.target.combined[analysis=="p13-8kb" | analysis=="p13-15kb" | analysis=="p10",], aes(y = depth, x=group_all_vs_promplus)) +
+  #scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_discrete(limits=c('promplus_ontarget','prom_ontarget','promplus_offtarget','prom_offtarget'),labels=c("PROM+\n on Target","PROM\n on Target", "PROM+\n off Target","PROM\n off Target")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 25)) + #50
+  labs(y = "Depth",
+       x = "Adaptive Sampling"
+       #title = ""
+  ) +
+  theme_light() +
+  geom_boxplot()
+ggsave(file.path(projectFolderPath,"work","pradaApp","per-sample-analysis",paste0("as_ontarget_offtarget_promcomparison_box.png")), units = "mm", width = 300, height = 250, scale = 0.40)
+
+
+

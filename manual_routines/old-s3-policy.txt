@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Id": "Policy1716199156430",
+  "Statement": [
+    {
+      "Sid": "Stmt1716193115741",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::277037904754:user/Lee"
+      },
+      "Action": "s3:*",
+      "Resource": "arn:aws:s3:::gwasdata"
+    }
+  ]
+}

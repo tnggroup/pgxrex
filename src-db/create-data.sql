@@ -62,7 +62,8 @@ INSERT INTO prada.variant(type,snp,chr,bp,bp2,mdd_p,mdd_beta,mdd_beta_se,mdd_bet
 INSERT INTO prada.variant(type,snp,chr,bp,bp2,mdd_p) SELECT d.type, d.snp, d.chr, d.bp, d.bp2, d.mdd_p FROM prada."mmddcnv0index.b38.bed" d;
 
 --insert PRADA drug recommendations
---version 1 format, excel sheet by giuseppe and danyang
+--version 2 format, excel sheet by giuseppe and danyang
+--version 2: improved data import. correct import of floating point numbers of start and target dose for example.
 DROP TABLE IF EXISTS t_drug_recommendations_import;
 CREATE TEMP TABLE IF NOT EXISTS t_drug_recommendations_import AS
 SELECT --over diplotypes, should have one row per gene
@@ -94,12 +95,13 @@ CASE WHEN strpos(d.switch_as_2nd_choice,hcpgx.drug_name)!=0 THEN 1 ELSE 0 END pr
 CASE WHEN strpos(d.switch_as_2nd_choice,hcpgx.gene_name)!=0 THEN 1 ELSE 0 END prada_switch2_gene, --prada_switch2_gene
 d.tdm,
 hcpgx.drugrecommendation
-FROM postgres.prada_cpic_pgx_variables_coded_20260120 d
+FROM postgres.prada_cpic_pgx_variables_coded_20260925 d
 LEFT OUTER JOIN prada.harmonised_combined_pgx hcpgx ON hcpgx.recommendation =d.recommendation AND d.drug_name  =hcpgx.drug_name AND d.guidelineid = hcpgx.guidelineid AND d.implications::jsonb = hcpgx.implications;
 CREATE UNIQUE INDEX t_drug_recommendations_import_u ON t_drug_recommendations_import (recommendation,guidelineid ,drug_name,gene_name,rn);
-
+--SELECT * FROM t_drug_recommendations_import;
 
 --Import data first into t_drug_recommendations_import
+--DELETE FROM prada.recommendation *;  
 INSERT INTO prada.recommendation(
 recommendation,
 guideline,
@@ -134,7 +136,7 @@ m.prada_switch2_drug,
 m.prada_switch2_gene,
 m.tdm,
 m.drugrecommendation,
-1 --version
+2 --version
 FROM t_drug_recommendations_import m
 --WHERE hcpgx.recommendation=5991110
 WHERE m.recommendation IS NOT NULL AND m.rn =1

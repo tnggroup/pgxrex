@@ -354,8 +354,17 @@ SELECT 'CYP2D6' AS gene, '*2/*4' AS diplotype
 	SELECT 'CYP2B6','*4/*6'
 	UNION ALL
 	SELECT 'CYP2C19', '*1/*17';
+
 --	UNION ALL
 --	SELECT 'TPMT', '*4/*14';
+
+--test with consistently poor metabolisers
+--CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
+--SELECT 'CYP2D6' AS gene, '*4/*4' AS diplotype
+--	UNION ALL
+--	SELECT 'CYP2B6','*6/*6'
+--	UNION ALL
+--	SELECT 'CYP2C19', '*2/*2';
 
 /*
 DROP TABLE IF EXISTS t_drug_input;
@@ -375,16 +384,19 @@ SELECT 'RxNorm:5640' AS drugid
 --DROP FUNCTION prada.get_application_recommendation;
 CREATE OR REPLACE FUNCTION prada.get_application_recommendation() RETURNS TABLE(
 drug_name text,
---guidelineid numeric,
---cpiclevel text,
+cpiclevel text,
+pgkbcalevel text,
+flowchart text,
+guideline_name text,
+guideline_url text,
 gene_name text,
 diplotype text,
 result text,
---activityscore text,
---recommendation numeric,
---ehrpriority text,
---drugrecommendation text,
---phenotypes jsonb,
+activityscore text,
+recommendation numeric,
+ehrpriority text,
+drugrecommendation text,
+phenotypes text, --jsonb,
 phenotype_cyp2b6 text,
 phenotype_cyp2c19 text,
 phenotype_cyp2d6 text,
@@ -469,7 +481,34 @@ dipcyp2d6_check integer
 		pr.version prada_recommendation_version
 		
 		
-	--SELECT *
+--	SELECT 
+--		pgx.drug_name,
+--
+--		pgx.usedforrecommendation,
+--
+--		pgx.gene_name,
+--		pgx.diplotype,
+--		pgx.result,
+--		pgx.activityscore,
+--
+--
+--		pgx.ehrpriority,
+--
+--		pgx.diplotype_frequency,
+--
+--		pgx.phenotypes,
+--		(pgx.phenotypes ->> 'CYP2B6')::text phenotype_cyp2b6,
+--		(pgx.phenotypes ->> 'CYP2C19')::text phenotype_cyp2c19,
+--		(pgx.phenotypes ->> 'CYP2D6')::text phenotype_cyp2d6,
+--		(
+--		CASE
+--			WHEN pgx.gene_name='CYP2B6' THEN 0
+--			WHEN pgx.gene_name='CYP2C19' THEN 0
+--			WHEN pgx.gene_name='CYP2D6' THEN 0
+--			ELSE 1
+--			END
+--		) AS phenotype_other
+		
 	FROM prada.harmonised_combined_pgx pgx
 	INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
 	INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
@@ -482,22 +521,36 @@ dipcyp2d6_check integer
 	INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
 	INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
 	)
-	SELECT rec.*, (dipcyp2b6.result IS NOT NULL)::integer AS dipcyp2b6_check, (dipcyp2c19.result IS NOT NULL)::integer AS dipcyp2c19_check, (dipcyp2d6.result IS NOT NULL)::integer AS dipcyp2d6_check FROM rec
+	SELECT rec.*, (dipcyp2b6.result IS NOT NULL)::integer AS dipcyp2b6_check, (dipcyp2c19.result IS NOT NULL)::integer AS dipcyp2c19_check, (dipcyp2d6.result IS NOT NULL)::integer AS dipcyp2d6_check
+	--dipcyp2b6.result AS dipcyp2b6_result, dipcyp2c19.result AS dipcyp2c19_result, dipcyp2d6.result AS dipcyp2d6_result
+	FROM rec
 	LEFT OUTER JOIN dip dipcyp2b6 ON rec.drug_name = dipcyp2b6.drug_name 
-		AND dipcyp2b6.gene_name='CYP2B6' AND rec.gene_name=dipcyp2b6.gene_name AND rec.phenotype_cyp2b6=dipcyp2b6.result
+		AND dipcyp2b6.gene_name='CYP2B6' AND rec.phenotype_cyp2b6=dipcyp2b6.result
 	LEFT OUTER JOIN dip dipcyp2c19 ON rec.drug_name = dipcyp2c19.drug_name 
-		AND dipcyp2c19.gene_name='CYP2C19' AND rec.gene_name=dipcyp2c19.gene_name AND rec.phenotype_cyp2c19=dipcyp2c19.result
+		AND dipcyp2c19.gene_name='CYP2C19' AND rec.phenotype_cyp2c19=dipcyp2c19.result
 	LEFT OUTER JOIN dip dipcyp2d6 ON rec.drug_name = dipcyp2d6.drug_name 
-		AND dipcyp2d6.gene_name='CYP2D6' AND rec.gene_name=dipcyp2d6.gene_name AND rec.phenotype_cyp2d6=dipcyp2d6.result
+		AND dipcyp2d6.gene_name='CYP2D6' AND rec.phenotype_cyp2d6=dipcyp2d6.result
+	--WHERE rec.prada_start_dose = 0 --FOR DEBUG!!!!!!!!!!!!!
+	--WHERE rec.drug_name = 'sertraline' --FOR DEBUG!!!!!!!!!!!!!
 	--ORDER BY drug_name,gene_name,diplotype,cpiclevel,classification,guidelineid
 
 	--ORDER BY rec.drug_name,rec.phenotype_cyp2b6,rec.phenotype_cyp2c19,rec.phenotype_cyp2d6,rec.phenotype_other
 	)
 	SELECT
 	rec2.drug_name,
+	rec2.cpiclevel,
+	rec2.pgkbcalevel,
+	rec2.flowchart,
+	rec2.guideline_name,
+	rec2.guideline_url,
 	rec2.gene_name,
 	rec2.diplotype,
 	rec2.result,
+	rec2.activityscore,
+	rec2.recommendation,
+	rec2.description,
+	rec2.ehrpriority,
+	rec2.consultationtext,
 	rec2.phenotype_cyp2b6,
 	rec2.phenotype_cyp2c19,
 	rec2.phenotype_cyp2d6,
@@ -530,5 +583,9 @@ dipcyp2d6_check integer
 $$ LANGUAGE sql;
 
 --SELECT * FROM prada.get_application_recommendation();
+
+
+--SELECT * FROM prada.harmonised_combined_pgx pgx 
+--WHERE pgx.gene_name='CYP2B6' AND pgx.drug_name = 'sertraline' AND result = 'Poor Metabolizer';
 
 

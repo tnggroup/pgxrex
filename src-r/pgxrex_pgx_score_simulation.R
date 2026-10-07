@@ -102,6 +102,7 @@ dSim.afr<-shru::readFile(file.path(projectFolderPath,"data","pradaApp","simulate
 dSim.amlathis<-shru::readFile(file.path(projectFolderPath,"data","pradaApp","simulated.amlathis.txt"))
 dSim.amcarafr<-shru::readFile(file.path(projectFolderPath,"data","pradaApp","simulated.amcarafr.txt"))
 dSim.gme<-shru::readFile(file.path(projectFolderPath,"data","pradaApp","simulated.gme.txt"))
+dSim.all<-rbindlist(list(dSim.eur,dSim.eas,dSim.cassas,dSim.afr,dSim.amlathis,dSim.amcarafr,dSim.gme),use.names = T,fill = T)
 
 #run pgxrex interpretation and scoring
 
@@ -170,7 +171,6 @@ dRes[,id:=paste0("",ancestry,i)]
 
 lSimId<-unique(dRes$id)
 
-#HERE!!! there is an error
 dRes.individual_drug<-data.frame(matrix(NA,0,0))
 for(iSimulatedIndividual in 1:length(lSimId)){
   #iSimulatedIndividual<-1
@@ -193,13 +193,18 @@ for(iSimulatedIndividual in 1:length(lSimId)){
     prada_avg_cpiclevel_num=mean(prada_cpiclevel_num,na.rm=T)
     ), by=c('drug_name')]
 
-  cRes.aggregate[,score:=1.0*prada_start_dose+1.0*prada_target_dose+1.0*(prada_titration_speed/2)-1.0*prada_switch1_drug-1.0*prada_switch1_gene-0.5*prada_switch2_drug-0.5*prada_switch2_gene-1.0*prada_tdm][,weight:=(prada_avg_cpiclevel_num/8)] #no sequencing depth information
-
   cRes.aggregate[,id:=eval(idSimulatedIndividual)]
 
   dRes.individual_drug<-rbindlist(list(dRes.individual_drug,cRes.aggregate),use.names = T,fill = T)
 
 }
+
+dRes.individual_drug[,score:=1.0*prada_start_dose+1.0*prada_target_dose+1.0*(prada_titration_speed/2)-1.0*prada_switch1_drug-1.0*prada_switch1_gene-0.5*prada_switch2_drug-0.5*prada_switch2_gene-1.0*prada_tdm + 1][,weight:=(prada_avg_cpiclevel_num/8)] #no sequencing depth information
+#add 1 to the score to make it go from 0 and up (which makes it scalable by the weight)
+dRes.individual_drug[,wscore:=score*weight]
+
+dRes.individual_drug[,score2:=ifelse(prada_start_dose<0.7 | prada_switch1_drug>0 | prada_switch1_gene>0 | prada_switch2_drug>0 | prada_switch2_gene>0,0,1)]
+dRes.individual_drug[,wscore2:=score2*weight]
 
 shru::writeFile(dRes.individual_drug,file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.txt")))
 

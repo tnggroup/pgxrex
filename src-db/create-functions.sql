@@ -358,6 +358,16 @@ SELECT 'CYP2D6' AS gene, '*2/*4' AS diplotype
 --	UNION ALL
 --	SELECT 'TPMT', '*4/*14';
 
+--test with ultrarapid metabolism recommendations
+CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
+SELECT 'CYP2D6' AS gene, '*17x2/*45x2' AS diplotype
+	UNION ALL
+	SELECT 'CYP2B6','*4/*4'
+	UNION ALL
+	SELECT 'CYP2C19', '*17/*17';
+
+
+
 --test with consistently poor metabolisers
 --CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
 --SELECT 'CYP2D6' AS gene, '*4/*4' AS diplotype
@@ -585,7 +595,9 @@ $$ LANGUAGE sql;
 --SELECT * FROM prada.get_application_recommendation();
 
 
+
 --SELECT * FROM prada.harmonised_combined_pgx pgx 
---WHERE pgx.gene_name='CYP2B6' AND pgx.drug_name = 'sertraline' AND result = 'Poor Metabolizer';
+--WHERE recommendation=5993063
+--WHERE pgx.gene_name='CYP2B6' AND result = 'Ultrarapid Metabolizer';
 
 

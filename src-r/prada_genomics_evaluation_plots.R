@@ -37,12 +37,14 @@ dSample.unique[,c("nCalls")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls],n
 dSample.unique[,c("nCalls.dep")] <-rowSums(dSample.unique[,..colnamesAllGeneCalls.antidepressant],na.rm = T)
 dSample.unique[,sample:=mostCredibleReference]
 
-
-#Score density plots
+#genetic scores from pgxrex_pgx_score_simulation
 dScore<-shru::readFile(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.txt")))
 
+
+#Score density plots
+
 #select score
-dScore[,score:=wscore2]
+dScore[,score:=wscore]
 #dScore[,score:=score+1] #shift score +1
 
 setorder(dScore, score, weight, id)
@@ -60,6 +62,14 @@ ggplot(data = dScore, aes(x=score)) + #[drug_name=="sertraline",]
   theme_light() +
   geom_density()
 ggsave(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("score_density.png")), units = "mm", width = 300, height = 150, scale = 0.40)
+
+dplyr::tally(
+  dplyr::group_by(
+    dScore,
+    score
+    #ancestry
+  )
+)
 
 ggplot(data = dScore, aes(x=weight)) + #[drug_name=="sertraline",]
   #geom_density(position="stack")
@@ -126,6 +136,140 @@ for(iDrug in 1:length(lDrug)){
 
 }
 
+# analysis of relative drug priority difference across scores
+dScore<-shru::readFile(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.txt")))
+dPheScore<-shru::readFile(file.path(projectFolderPath,"data","petrushka",paste0("final_predicted_score_petrushka_arm_(to KCL).csv")))
+colnames(dPheScore)<-tolower(colnames(dPheScore))
+lPheDrug<-tolower(colnames(dPheScore)[2:16])
+lAllDrug<-unique(c(lPheDrug,lDrug))
+dtAllDrug<-data.table(drug_name=lAllDrug)
+
+dPheScore.long<-reshape(dPheScore,
+                   direction = "long",
+                   idvar = c("pid"),
+                   varying = lPheDrug,
+                   v.names = "score",
+                   timevar = "drug_name",
+                   times = lPheDrug
+)
+
+dPheScore.long[,score:=as.numeric(score)]
+
+#make ranks - relative phenotypic score
+lId<-unique(dPheScore.long$pid)
+for(iId in 1:length(lId)){
+  #iId<-1
+  cId<-lId[iId]
+  cScoreD<-dPheScore.long[pid==eval(cId),]
+  cScoreD.score<-cScoreD[,
+                         .(
+                           id=head(.SD, 1)$pid,
+                           ethnicity=head(.SD, 1)$ethnicity
+                         )
+                         ,by=c('score')]
+
+  setorder(cScoreD.score, -score, na.last = T)
+  cScoreD.score[,rank:=.I]
+
+  cScoreD[cScoreD.score, on=c("score"),rank:=i.rank]
+
+  dPheScore.long[cScoreD, on=.(pid=pid,drug_name=drug_name), rank:=i.rank]
+}
+
+#harmonise/map ethnicity/ancestry between the datasets
+unique(dPheScore.long$ethnicity)
+unique(dScore$ancestry)
+dPheScore.long[ethnicity=="White/Caucasian",mapped_ancestry:="eur"]
+dPheScore.long[ethnicity=="Other",mapped_ancestry:="cassas"]
+dPheScore.long[ethnicity=="Asian",mapped_ancestry:="eas"]
+dPheScore.long[ethnicity=="African/Caribbean",mapped_ancestry:="amcarafr"]
+
+
+#add ancestry specific score means
+dScore[,score.ancestry.mean:=mean(wscore,na.rm=T),by=c("ancestry")]
+
+#add missing drugs
+lSimId<-unique(dScore$id)
+for(iSimId in 1:length(lSimId)){
+  #iSimId<-1
+  cSimId<-lSimId[iSimId]
+
+  cScoreD<-dScore[id==eval(cSimId),]
+  cScoreD.shared<-cScoreD[1,]
+  cAllDrug<-dtAllDrug
+  cAllDrug<-cAllDrug[cScoreD, on=c("drug_name"), match:=1][is.na(match),][,c("id","ancestry","score.ancestry.mean"):=list(eval(cSimId),eval(cScoreD.shared$ancestry),eval(cScoreD.shared$score.ancestry.mean))][,.(drug_name,id,ancestry,score.ancestry.mean)]
+  dScore<-rbindlist(list(dScore,cAllDrug),use.names = T,fill = T)
+}
+
+#assign default values for missing scores
+dScore[is.na(wscore),wscore:=score.ancestry.mean]
+#dScore[is.na(wscore),wscore:=4]
+dScore[is.na(wscore2),wscore2:=1]
+
+dScore[,wscore.max:=max(wscore,na.rm=T), by=c('id')]
+dScore[,wscore2.max:=max(wscore2,na.rm=T), by=c('id')]
+dScore[!is.na(weight),wscore.max.gonly:=max(wscore,na.rm=T), by=c('id')]
+dScore[!is.na(weight),wscore2.max.gonly:=max(wscore2,na.rm=T), by=c('id')]
+
+#make ranks - wscore
+lSimId<-unique(dScore$id)
+for(iSimId in 1:length(lSimId)){
+  #iSimId<-1
+  cSimId<-lSimId[iSimId]
+  cScoreD<-dScore[id==eval(cSimId),]
+  cScoreD.score<-cScoreD[,
+    .(
+    id=head(.SD, 1)$id,
+    ancestry=head(.SD, 1)$ancestry,
+    wscore
+    )
+    ,by=c('wscore')]
+
+  setorder(cScoreD.score, -wscore, na.last = T)
+  cScoreD.score[,rank:=.I]
+
+  cScoreD[cScoreD.score, on=c("wscore"),rank:=i.rank]
+
+  dScore[cScoreD, on=.(id=id,drug_name=drug_name), rank:=i.rank]
+}
+
+#score differences as in the
+dScore[,wscore.diff:=wscore-wscore.max]
+
+#output long version of the diffscores and ranks
+setorder(dScore, ancestry, id, drug_name, na.last = T)
+shru::writeFile(dScore,file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.scoreranks.txt")))
+
+
+#ancestral sumstats - this is the only thing we have to match the phenotypic scores with
+dScore<-shru::readFile(file.path(projectFolderPath,"work","pradaApp","simulation",paste0("simulatedPgx.individual_drug.scoreranks.txt")))
+dScore.agg<-dScore[,.(
+  #ancestry,
+  #drug_name,
+  rec_count = .N,
+  avg_wscore=mean(wscore,na.rm=T),
+  avg_rank=mean(rank,na.rm=T),
+  max_wscore=max(wscore,na.rm=T),
+  max_rank=max(rank,na.rm=T),
+  min_wscore=min(wscore,na.rm=T),
+  min_rank=min(rank,na.rm=T)
+), by=c('ancestry','drug_name')]
+
+
+#stats of the phenotypic scores in relation to the genetics based simulated sumstats
+dPheScore.long[dScore.agg, on=.(mapped_ancestry=ancestry,drug_name=drug_name),c("avg_genetic_rank","rank.diff"):=list(i.avg_rank,rank-i.avg_rank)]
+setorder(dPheScore.long, mapped_ancestry, pid, drug_name, na.last = T)
+shru::writeFile(dPheScore.long,file.path(projectFolderPath,"data","petrushka",paste0("final_predicted_score_petrushka_arm.scorediff.txt")))
+
+dPheScore.long.agg<-dPheScore.long[,.(
+  #drug_name,
+  rec_count = .N,
+  avg_rank=mean(rank,na.rm=T),
+  avg_genetic_rank=mean(avg_genetic_rank,na.rm=T),
+  avg_rankdiff=mean(rank.diff,na.rm=T)
+  ), by=c('mapped_ancestry','drug_name')]
+setorder(dPheScore.long.agg, mapped_ancestry, drug_name, na.last = T)
+shru::writeFile(dPheScore.long.agg,file.path(projectFolderPath,"data","petrushka",paste0("final_predicted_score_petrushka_arm.scorediff.agg.txt")))
 
 #Samtools stats
 

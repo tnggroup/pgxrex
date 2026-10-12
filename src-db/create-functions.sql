@@ -600,4 +600,11 @@ $$ LANGUAGE sql;
 --WHERE recommendation=5993063
 --WHERE pgx.gene_name='CYP2B6' AND result = 'Ultrarapid Metabolizer';
 
+--SELECT * FROM prada.harmonised_combined_pgx pgx
+----SELECT DISTINCT pgx.gene_name, pgx.cpiclevel FROM prada.harmonised_combined_pgx pgx
+--	INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+--	--WHERE (cpiclevel = 'A' OR cpiclevel = 'B')
+--	--WHERE gene_name = 'COMT';
+--	WHERE NOT (cpiclevel = 'A' OR cpiclevel = 'B') AND diplotype IS NOT NULL AND NOT (gene_name='CYP2B6' OR gene_name='CYP2C19' OR gene_name='CYP2D6');
+
 

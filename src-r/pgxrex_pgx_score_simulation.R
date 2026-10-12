@@ -183,7 +183,7 @@ for(iSimulatedIndividual in 1:length(lSimId)){
     ancestry=head(.SD, 1)$ancestry,
     prada_rec_count = .N,
     prada_start_dose=min(prada_start_dose,na.rm=T),
-    prada_target_dose=min(prada_target_dose,na.rm=T),
+    prada_target_dose=min(prada_target_dose,na.rm=T), #check the combinations
     prada_titration_speed=min(prada_titration_speed,na.rm=T),
     prada_switch1_drug=max(prada_switch1_drug,na.rm=T),
     prada_switch1_gene=max(prada_switch1_gene,na.rm=T),

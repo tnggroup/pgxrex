@@ -36,11 +36,27 @@ PgxrexClass <- setRefClass("Pgxrex",
                                            methods = list
                                            (
                                              #this is the constructor as per convention
-                                             initialize=function()
+                                             initialize=function(
+                                                                  settingsFilePath=NULL,
+                                                                  protectedFilePath=NULL
+                                                                 )
                                              {
 
                                                #defaults
-                                               contextDatabaseList<<-c()
+                                               contextDatabaseList<<-list()
+
+                                               if(!is.null(settingsFilePath)){
+                                                 contextDatabaseList["settingsFilePath"]<<-settingsFilePath
+                                               } else {
+                                                 contextDatabaseList["settingsFilePath"]<<-"settings.conf.txt"
+                                               }
+
+                                               if(!is.null(protectedFilePath)){
+                                                 contextDatabaseList["protectedFilePath"]<<-protectedFilePath
+                                               } else {
+                                                 contextDatabaseList["protectedFilePath"]<<-"settings.conf.txt"
+                                               }
+
                                                nThread <<- 6
                                                folderpathLaunch <<- getwd()
                                                folderpathWork <<- file.path("")

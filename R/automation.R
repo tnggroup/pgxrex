@@ -2,13 +2,19 @@
 
 #main function to run automated procedures
 PgxrexClass$methods(
-  automation=function(){
+  automation=function(
+    command=NULL
+    ){
 
-    initialise()
+    if(!is.null(command)){
+      contextDatabaseList["command"]<<-command
+    }
+
+    shared()
 
     command<-fcoalesce(contextDatabaseList$command,"about") #default to print and exit
     if(command=="about"){
-      catl("PGX Rex - A software to work with pharmacogenomics. Please specify the command to run.")
+      catl("PGX Rex - A software to work with ONT long read sequencing and pharmacogenomics. Please specify the command to run.")
     } else if(command=="automatic_routine"){
 
       #check for analysis to run
@@ -58,9 +64,96 @@ PgxrexClass$methods(
   }
 )
 
+#Default command line parsing
+#not automated - needs to be run by any command line application
+PgxrexClass$methods(
+  parseCommandLine=function(assignToContextDatabase=TRUE){
+
+    #command line options
+    optionParser <- OptionParser()
+
+    optionParser <- add_option(
+      object = optionParser,
+      opt_str = c("-c", "--command"),
+      type = "character",
+      default = "automatic_routine",
+      help = "Command to run."
+    )
+
+    optionParser <- add_option(
+      object = optionParser,
+      opt_str = c("-s", "--settingsFilePath"),
+      type = "character",
+      default = "settings.conf.txt",
+      help = "Path to settings-file."
+    )
+
+    optionParser <- add_option(
+      object = optionParser,
+      opt_str = c("-p", "--protectedFilePath"),
+      type = "character",
+      default = "protected.conf.txt",
+      help = "Path to protected settings-file (passwords etc.)"
+    )
+
+    parsedCLOptions <- parse_args(optionParser)
+
+    if(assignToContextDatabase){
+      contextDatabaseList[names(parsedCLOptions)]<<-parsedCLOptions
+    }
+
+    return(parsedCLOptions)
+
+  }
+)
+
+#Default configuration file parsing
+#This deals both with the standard configuration file and the protected file
+#not automated - needs to be run by any command line application
+PgxrexClass$methods(
+  parseConfigurationFile=function(assignToContextDatabase=TRUE){
+
+    parsedCFOptions <- list(
+      `pgxrexId`="mySite",
+      `pgxrexDbHost`="localhost",
+      `pgxrexDbUsername`="tng_prada_system",
+      `pgxrexDbName`="prada_local",
+      `pgxrexDbPort`=65432,
+      `redcapBaseUrl`="https://redcap.medsci.ox.ac.uk/api/",
+      `ncores`=6,
+      `folderpathWork`="" #default to current folder
+    ) #defaults
+
+
+    if(file.exists(contextDatabaseList$settingsFilePath)){
+      parsedCFOptions <- pgxrex::readMetadata(filePath = contextDatabaseList$settingsFilePath)
+    } else {
+      if(!file.exists("settings.conf.txt")){
+        dfOpts<-data.table(names=names(parsedCFOptions), values=parsedCFOptions)
+        fwrite(dfOpts,"settings.conf.txt",sep = "=",row.names = FALSE,col.names = FALSE)
+      }
+    }
+
+    if(assignToContextDatabase){
+      contextDatabaseList[names(parsedCFOptions)]<<-parsedCFOptions
+    }
+
+
+    parsedPCFOptions <- list(
+      `pgxrexDbPassword`="XXX_replace_with_password_XXX",
+      `redcapApiToken`="XXX_replace_with_API_token_XXX"
+    ) #defaults
+
+    if(assignToContextDatabase){
+      contextDatabaseList[names(parsedPCFOptions)]<<-parsedPCFOptions
+    }
+
+  }
+)
+
 #set up before running automation procedure(s)
 PgxrexClass$methods(
-  initialise=function(){
+  shared=function(){
     #contextDatabaseList<-pgxrexObj$contextDatabaseList
     catl("***PGX Rex automated routines***")
     if(any(names(contextDatabaseList)=="ncores")) {

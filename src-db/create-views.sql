@@ -423,7 +423,7 @@ WHERE g.in_pgx=TRUE OR g.in_cpic=TRUE OR g.has_cpiclevel=TRUE OR g.in_dpwg=TRUE 
 --AND d.type !='cancer'
 ;
 
---SELECT * FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_name='sertraline';
+--SELECT * FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_name='trazodone' AND tp.usedforrecommendation = TRUE;
 --SELECT * FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_name='bupropion';
 --SELECT * FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_class IS NOT NULL;
 --SELECT * FROM  prada.harmonised_combined_pgx tp ORDER by drug_name;

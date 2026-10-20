@@ -54,7 +54,7 @@ PgxrexClass <- setRefClass("Pgxrex",
                                                if(!is.null(protectedFilePath)){
                                                  contextDatabaseList["protectedFilePath"]<<-protectedFilePath
                                                } else {
-                                                 contextDatabaseList["protectedFilePath"]<<-"settings.conf.txt"
+                                                 contextDatabaseList["protectedFilePath"]<<-"protected.conf.txt"
                                                }
 
                                                nThread <<- 6

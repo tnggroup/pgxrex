@@ -144,6 +144,15 @@ PgxrexClass$methods(
       `redcapApiToken`="XXX_replace_with_API_token_XXX"
     ) #defaults
 
+    if(file.exists(contextDatabaseList$protectedFilePath)){
+      parsedPCFOptions <- pgxrex::readMetadata(filePath = contextDatabaseList$protectedFilePath)
+    } else {
+      if(!file.exists("protected.conf.txt")){
+        dfOpts<-data.table(names=names(parsedCFOptions), values=parsedPCFOptions)
+        fwrite(dfOpts,"protected.conf.txt",sep = "=",row.names = FALSE,col.names = FALSE)
+      }
+    }
+
     if(assignToContextDatabase){
       contextDatabaseList[names(parsedPCFOptions)]<<-parsedPCFOptions
     }

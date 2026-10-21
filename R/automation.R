@@ -10,9 +10,13 @@ PgxrexClass$methods(
       contextDatabaseList["command"]<<-command
     }
 
+    if(is.null(contextDatabaseList$command)) contextDatabaseList["command"]<<-"about" #default to print and exit
+
     shared()
 
-    command<-fcoalesce(contextDatabaseList$command,"about") #default to print and exit
+
+    browser()
+
     if(command=="about"){
       catl("PGX Rex - A software to work with ONT long read sequencing and pharmacogenomics. Please specify the command to run.")
     } else if(command=="automatic_routine"){
@@ -121,7 +125,8 @@ PgxrexClass$methods(
       `pgxrexDbPort`=65432,
       `redcapBaseUrl`="https://redcap.medsci.ox.ac.uk/api/",
       `ncores`=6,
-      `folderpathWork`="" #default to current folder
+      `folderpathWork`="", #default to current folder
+      `filepathMosdepth`="mosdepth" #path/command to run mosdepth
     ) #defaults
 
 
@@ -200,6 +205,7 @@ PgxrexClass$methods(
 
     parsedAnalysisOptions <- pgxrex::readMetadata(filePath = analysisConfigurationFilepath)
 
+    browser()
 
     #determine analysis id/code/name
     analysisId<<-paste0(contextDatabaseList$pgxrexId,"_unknown")
@@ -209,19 +215,31 @@ PgxrexClass$methods(
     catl("Analysis is:",analysisId)
 
 
-    #general analysis data setup - requires the database
-    computeGenomeCoverage( #default settings
-      nPrioritisedGene=300,
-      nPrioritisedCnv=0,
-      nPrioritisedSnp=0,
-      verbose = TRUE
-    )
-    catl("Genomic regions established.")
+
 
     #setup analysis working directory
     analysisFolderpathWork<<-file.path.coalesce(folderpathWork,"analysis",analysisId) #default
     dir.create(analysisFolderpathWork,recursive = TRUE)
-    setwd(analysisFolderpathWork)
+    #setwd(analysisFolderpathWork) #let's not set this here
+
+
+    #TODO make an offline version
+
+    #general analysis data setup - requires the database
+    if(testFlag.offline){
+
+    } else {
+      computeGenomeCoverage( #default settings
+        nPrioritisedGene=300,
+        nPrioritisedCnv=0,
+        nPrioritisedSnp=0,
+        verbose = TRUE,
+        writeToThisBedPath = file.path(analysisFolderpathWork,"applicationCoverageRegionsFiltered.bed"),
+        writePaddedStrands = FALSE
+      )
+    }
+    catl("Genomic regions established.")
+
 
 
 
@@ -234,7 +252,7 @@ PgxrexClass$methods(
       )
     collectAnalysisCallData(analysisId)
     catl("Sequencing and basecall data collected.")
-    if(testFlag.offline){
+    if(testFlag.offline || testFlag.prepared.analysis){
       readPrintData(analysisFolderpathWork)
     } else {
       #run mosdepth for each sequenced individual in the analysis
@@ -252,11 +270,11 @@ PgxrexClass$methods(
           wrapper.mosdepth(
             label = cBarcode,bamFilePath = file.path(parsedAnalysisOptions["folderpathWFPGX"],"output",cBarcode,paste0(cBarcode,".haplotagged.bam")),
             threads = nThread,
-            mosdepthPath = ""
+            mosdepthPath = contextDatabaseList$filepathMosdepth
           )
         }
 
-        setwd(analysisFolderpathWork)
+        setwd(folderpathLaunch)
 
       }
 
@@ -269,7 +287,7 @@ PgxrexClass$methods(
 
     }
 
-    setwd(folderpathLaunch)
+    #setwd(folderpathLaunch)
 
 
     #reporting

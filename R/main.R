@@ -31,7 +31,8 @@ PgxrexClass <- setRefClass("Pgxrex",
                                              sampleMeta = 'ANY',
 
 
-                                             testFlag.offline = 'ANY'
+                                             testFlag.offline = 'ANY',
+                                             testFlag.prepared.analysis = 'ANY'
                                            ),
                                            methods = list
                                            (
@@ -82,6 +83,7 @@ PgxrexClass <- setRefClass("Pgxrex",
 
 
                                                testFlag.offline<<-FALSE
+                                               testFlag.prepared.analysis<<-FALSE
                                              }
                                            )
 )

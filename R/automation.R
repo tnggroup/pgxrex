@@ -29,7 +29,7 @@ PgxrexClass$methods(
         list.files(pattern = ".+\\.pgxrex\\.analysis\\.conf\\.txt$")
       )
 
-      if(length(analyses)>0){
+      if(is.na(analyses) || length(analyses)>0){
 
         analysisConfigurationFilepath<<-ifelse(
           nchar(folderpathWork)>0,

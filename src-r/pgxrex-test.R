@@ -5,7 +5,7 @@ library(pgxrex)
 #remotes::install_github("tnggroup/pgxrex",ref = 'jz_dev')
 
 #setwd(utils::getSrcDirectory(function(){})[1]) #force wd in case of previous changes
-#source("")
+#source("/users/k2481717/project/pgxrex/src-r/pgxrex-test.R")
 
 
 PgxrexClass$trace("automation") #DEBUG
@@ -15,8 +15,8 @@ pgxrexObj$parseConfigurationFile()
 
 #pgxrexObj$contextDatabaseList
 
-pgxrexObj$testFlag.offline<-TRUE #TEST
-pgxrexObj$testFlag.prepared.analysis<-TRUE #TEST
+pgxrexObj$testFlag.offline<-FALSE #TEST
+pgxrexObj$testFlag.prepared.analysis<-FALSE #TEST
 
 #sbrowser()
 

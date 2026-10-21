@@ -205,8 +205,6 @@ PgxrexClass$methods(
 
     parsedAnalysisOptions <- pgxrex::readMetadata(filePath = analysisConfigurationFilepath)
 
-    browser()
-
     #determine analysis id/code/name
     analysisId<<-paste0(contextDatabaseList$pgxrexId,"_unknown")
     if(any(names(parsedAnalysisOptions)=="analysisId")){
@@ -258,6 +256,8 @@ PgxrexClass$methods(
       #run mosdepth for each sequenced individual in the analysis
       sampleMeta.analysis<-sampleMeta[sampleMeta$analysis==analysisId,]
       if(nrow(sampleMeta.analysis)>0){
+
+        browser()
 
         analysisFolderpathWork.mosdepth<-file.path.coalesce(analysisFolderpathWork,"mosdepth")
         dir.create(analysisFolderpathWork.mosdepth,recursive = TRUE)

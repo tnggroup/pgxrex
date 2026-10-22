@@ -940,6 +940,9 @@ PgxrexClass$methods(
     #   }
     # }
 
+    saveRDS(analysisSettingsList,file.path.coalesce(targetFolderpath,paste0("analysisSettingsList.Rds")))
+    saveRDS(sampleSettingsList,file.path.coalesce(targetFolderpath,paste0("sampleSettingsList.Rds")))
+
     if(nrow(sampleMeta)>0){
       for(iSample in 1:nrow(sampleMeta)){
         #iSample<-1

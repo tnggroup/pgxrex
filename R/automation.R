@@ -15,7 +15,7 @@ PgxrexClass$methods(
     shared()
 
 
-    browser()
+    #browser()
 
     if(command=="about"){
       catl("PGX Rex - A software to work with ONT long read sequencing and pharmacogenomics. Please specify the command to run.")
@@ -292,7 +292,7 @@ PgxrexClass$methods(
 
     #reporting
     #TODO - when our table is set up
-    browser()
+    #browser()
 
 
     # #phenoconversion

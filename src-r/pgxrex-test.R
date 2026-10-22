@@ -16,7 +16,7 @@ pgxrexObj$parseConfigurationFile()
 #pgxrexObj$contextDatabaseList
 
 pgxrexObj$testFlag.offline<-FALSE #TEST
-pgxrexObj$testFlag.prepared.analysis<-FALSE #TEST
+pgxrexObj$testFlag.prepared.analysis<-TRUE #TEST
 
 #sbrowser()
 

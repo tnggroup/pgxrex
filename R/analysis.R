@@ -681,7 +681,7 @@ PgxrexClass$methods(
     # mddPharmacogeneticsRelevantGenes<-c("CYP2B6","CYP2C19","CYP2D6")
 
 
-    browser()
+    #browser()
 
     if(!is.null(filePathApplicationCoverageRegions)){
       dApplicationCoverageRegions<-data.table::fread(file = filePathApplicationCoverageRegions)
@@ -1035,6 +1035,16 @@ PgxrexClass$methods(
       uniqueSampleId.toAdd <-paste0(sampleMeta.toAdd$analysis,"_",sampleMeta.toAdd$barcode)
       sampleMeta[uniqueSampleId.toAdd,colnames(sampleMeta.toAdd)] <<- sampleMeta.toAdd
 
+    }
+
+    cFilepath<-file.path.coalesce(targetFolderpath,"analysisSettingsList.Rds")
+    if(file.exists(cFilepath)) {
+      analysisSettingsList<<-readRDS(cFilepath)
+    }
+
+    cFilepath<-file.path.coalesce(targetFolderpath,"sampleSettingsList.Rds")
+    if(file.exists(cFilepath)) {
+      sampleSettingsList<<-readRDS(cFilepath)
     }
 
   }

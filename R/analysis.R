@@ -681,6 +681,8 @@ PgxrexClass$methods(
     # mddPharmacogeneticsRelevantGenes<-c("CYP2B6","CYP2C19","CYP2D6")
 
 
+    browse()
+
     if(!is.null(filePathApplicationCoverageRegions)){
       dApplicationCoverageRegions<-data.table::fread(file = filePathApplicationCoverageRegions)
     } else dApplicationCoverageRegions<-applicationCoverageRegions #fall back to internal

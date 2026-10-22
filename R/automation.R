@@ -257,8 +257,6 @@ PgxrexClass$methods(
       sampleMeta.analysis<-sampleMeta[sampleMeta$analysis==analysisId,]
       if(nrow(sampleMeta.analysis)>0){
 
-        browser()
-
         analysisFolderpathWork.mosdepth<-file.path.coalesce(analysisFolderpathWork,"mosdepth")
         dir.create(analysisFolderpathWork.mosdepth,recursive = TRUE)
         setwd(analysisFolderpathWork.mosdepth)
@@ -284,6 +282,8 @@ PgxrexClass$methods(
       catl("Sequencing depth data statistics computed.")
       computeCallStatistics()
       catl("Sequencing and basecall data statistics computed.")
+      printData(targetFolderpath=analysisFolderpathWork)
+      catl("Analysis statistics printed.")
 
     }
 
@@ -292,18 +292,19 @@ PgxrexClass$methods(
 
     #reporting
     #TODO - when our table is set up
-
-
-    #phenoconversion
     browser()
-    recs<-redcapDAO$exportRecords(vForms=list("concomitant_medication_log"))
-    #recs<-redcapDAO$exportRecords()
-    #resp_raw(recs)
-    lRecs <- resp_body_json(recs)
-    #length(lRecs)
-    #lRecs[1]
-    #lRecs[2]
-    dtData <- data.table::rbindlist(lRecs)
+
+
+    # #phenoconversion
+    # browser()
+    # recs<-redcapDAO$exportRecords(vForms=list("concomitant_medication_log"))
+    # #recs<-redcapDAO$exportRecords()
+    # #resp_raw(recs)
+    # lRecs <- resp_body_json(recs)
+    # #length(lRecs)
+    # #lRecs[1]
+    # #lRecs[2]
+    # dtData <- data.table::rbindlist(lRecs)
 
 
     ##read phenoconversion data

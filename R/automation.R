@@ -251,6 +251,7 @@ PgxrexClass$methods(
     collectAnalysisCallData(analysisId)
     catl("Sequencing and basecall data collected.")
     if(testFlag.offline || testFlag.prepared.analysis){
+      catl("!Using previously prepared results!")
       readPrintData(analysisFolderpathWork)
     } else {
       #run mosdepth for each sequenced individual in the analysis

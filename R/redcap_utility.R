@@ -67,6 +67,9 @@ PgxrexRedcapUtilityClass$methods(
   }
 )
 
+#test of export
+#testFormExport<-pgxrexObj$redcapDAO$exportRecords(vForms = c("concomitant_medication_log","diet_lifestyle_exposures"))
+
 
 # Import Records
 PgxrexRedcapUtilityClass$methods(

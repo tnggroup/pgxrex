@@ -55,6 +55,24 @@ ALTER TABLE prada.drug
   ADD CONSTRAINT drug_pkey PRIMARY KEY (name);
 ALTER TABLE prada.drug
 	ADD COLUMN selected_for_analysis smallint;
+ALTER TABLE prada.drug
+	ADD COLUMN additional_modifier varchar(100); --Flockhart table addition - maybe not needed
+ALTER TABLE prada.drug
+	ADD COLUMN high_level_classification varchar(200); --Flockhart table addition
+ALTER TABLE prada.drug
+	ADD COLUMN external_key_mapping integer; --REDCap or other system key mapping
+
+-- DROP TABLE prada.flockhart;
+CREATE TABLE prada.flockhart
+(
+	drug_name varchar(100) NOT NULL,
+	additional_modifier varchar(100) NOT NULL,
+	gene_name varchar(100) NOT NULL,
+	role varchar(20) NOT NULL,
+	strength varchar(20) NOT NULL,
+    CONSTRAINT flockhart_pkey PRIMARY KEY (drug_name,additional_modifier,gene_name)
+);
+COMMENT ON TABLE prada.flockhart IS 'Flockhart table for implementing phenoconversion.';
 
 -- DROP TABLE prada.recommendation;
 CREATE TABLE prada.recommendation

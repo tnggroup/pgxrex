@@ -144,8 +144,25 @@ WHERE m.recommendation IS NOT NULL AND m.rn =1
 ;
 
 
+--insert PRADA drug additions from flockhart table
+--SELECT DISTINCT drug_name,additional_modifier,high_level_calssification,drug_key_mapping FROM public."flockhart_table.csv" ftc;
 
+INSERT INTO prada.drug(name,weight,additional_modifier,high_level_classification,external_key_mapping) SELECT DISTINCT drug_name,1,additional_modifier,high_level_calssification,drug_key_mapping FROM public."flockhart_table.csv"
+ON CONFLICT DO NOTHING;
 
+UPDATE prada.drug SET 
+	additional_modifier=ftc.additional_modifier,
+	high_level_classification=ftc.high_level_calssification,
+	external_key_mapping=ftc.drug_key_mapping
+FROM (SELECT DISTINCT drug_name,additional_modifier,high_level_calssification,drug_key_mapping FROM public."flockhart_table.csv") AS ftc
+WHERE name=ftc.drug_name;
+
+INSERT INTO prada.flockhart(drug_name,additional_modifier,gene_name,role,strength) SELECT drug_name,additional_modifier,cyp_enzyme,role,strength FROM public."flockhart_table.csv"
+ON CONFLICT DO NOTHING;
+
+UPDATE prada.drug SET
+	additional_modifier=NULL
+WHERE additional_modifier='';
 
 --Experiments with transferring recommendations across CPIC database versions
 

@@ -26,7 +26,7 @@ PgxrexRedcapUtilityClass <- setRefClass("PgxrexRedcapUtility",
 
 # Export Records
 PgxrexRedcapUtilityClass$methods(
-  exportRecords=function(vRecords=NULL, vForms=NULL, returnParsed=TRUE){
+  exportRecords=function(vRecords=NULL, vForms=NULL, returnParsed=TRUE, returnWide=TRUE, filterRecord=NULL){
 
     #browser()
     recordsArg<-ifelse(is.null(vRecords),
@@ -57,6 +57,19 @@ PgxrexRedcapUtilityClass$methods(
     if(returnParsed){
       lRecs <- resp_body_json(resp)
       dtData <- rbindlist(lRecs)
+
+      if(!is.null(filterRecord)){
+        dtData <- dtData[record %in% filterRecord]
+      }
+
+      if(returnWide){
+
+        if(any(colnames(dtData)=="redcap_repeat_instrument") && any(colnames(dtData)=="redcap_repeat_instance")){
+          dtData <- dcast(dtData,  record + redcap_event_name + redcap_repeat_instrument + redcap_repeat_instance ~ field_name, value.var = "value")
+        } else {
+          dtData <- dcast(dtData,  record + redcap_event_name ~ field_name, value.var = "value")
+        }
+      }
       return(dtData)
     } else {
       return(resp)

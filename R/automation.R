@@ -296,16 +296,43 @@ PgxrexClass$methods(
     #browser()
 
 
-    # #phenoconversion
-    # browser()
-    # recs<-redcapDAO$exportRecords(vForms=list("concomitant_medication_log"))
-    # #recs<-redcapDAO$exportRecords()
-    # #resp_raw(recs)
-    # lRecs <- resp_body_json(recs)
-    # #length(lRecs)
-    # #lRecs[1]
-    # #lRecs[2]
-    # dtData <- data.table::rbindlist(lRecs)
+    #phenoconversion
+    #DO WE WANT TO ADD AGE? DO WE HAVE INFORMATION ON INFLAMMATION?
+    #Group likely metaboliser phenotypes with their definitive category
+    #Use activity score multipliers for CYP2B6 and CYP2D6. For CYP2C19 - use phenotype shifting.
+
+    browser()
+
+    #****#hardocded for testing
+    recs.medication.diet<-redcapDAO$exportRecords(
+      vForms=c("concomitant_medication_log","diet_lifestyle_exposures"),
+      filterRecord=c(1,2,3) #sampleMeta$barcode
+      )
+    recs.medication.diet[record==1,record:="PradaA"]
+    recs.medication.diet[record==2,record:="PradaB"]
+    recs.medication.diet[record==3,record:="PradaC"]
+
+
+    recs.medication.diet<-recs.medication.diet[concomitant_medication_log_complete==2,] #only complete samples
+
+    recs.blood_collection<-redcapDAO$exportRecords(
+      vForms=c("blood_collection"),
+      filterRecord=c(1,2,3)
+    )
+    recs.blood_collection[record==1,record:="PradaA"]
+    recs.blood_collection[record==2,record:="PradaB"]
+    recs.blood_collection[record==3,record:="PradaC"]
+
+    recs.blood_collection<-recs.blood_collection[blood_collection_complete==2 & sample_genetic_yn==1,] #only complete samples
+    recs.blood_collection[,date_blood_collect.parsed:=as.Date(date_blood_collect)]
+    setorder(recs.blood_collection, record, -date_blood_collect.parsed)
+    recs.blood_collection.top<-recs.blood_collection[, .(count = .N, date_blood_collect.parsed = head(.SD, 1)$date_blood_collect.parsed), by = c("record","redcap_event_name")] #most recent blood collection per record
+
+    cDate<-Sys.Date()
+    recs.blood_collection.top[,current.date:=as.Date(cDate)][,dateDiff:=as.integer(difftime(current.date, date_blood_collect.parsed, units = "days"))]
+
+    #recs.sel.wide<-dcast(recs.sel,  record + redcap_event_name + redcap_repeat_instrument + redcap_repeat_instance ~ field_name, value.var = "value")
+
 
 
     ##read phenoconversion data

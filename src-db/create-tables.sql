@@ -73,6 +73,8 @@ CREATE TABLE prada.flockhart
     CONSTRAINT flockhart_pkey PRIMARY KEY (drug_name,additional_modifier,gene_name)
 );
 COMMENT ON TABLE prada.flockhart IS 'Flockhart table for implementing phenoconversion.';
+ALTER TABLE prada.flockhart
+	ADD COLUMN strength_numeric integer;
 
 -- DROP TABLE prada.recommendation;
 CREATE TABLE prada.recommendation

@@ -115,9 +115,11 @@ g.diplotype,
 g.description,
 g.result,
 g.activityscore,
+(substring(g.activityscore FROM '≥*(\d+\.*\d*)')::numeric) AS activityscore_min_num,
 g.ehrpriority,
 g.consultationtext,
 g.lookupkey,
+g.lookupmethod,
 g.diplotypekey,
 g.diplotype_frequency,
 g.prada_ehrpriority_num,
@@ -169,6 +171,10 @@ LEFT OUTER JOIN cpic.guideline gl ON d.guidelineid = gl.id
 LEFT OUTER JOIN cpic.allele al1 ON g.genesymbol=al1.genesymbol AND g.allele1=al1.name
 LEFT OUTER JOIN cpic.allele al2 ON g.genesymbol=al2.genesymbol AND g.allele2=al2.name
 ;
+
+--SELECT substring('≥3.25' FROM '≥*(\d+\.*\d*)')::numeric;
+--SELECT substring('3.25' FROM '≥*(\d+\.*\d*)');
+--SELECT substring('0' FROM '≥*(\d+\.*\d*)');
 
 CREATE INDEX harmonised_cpic_pgx_i ON prada.harmonised_cpic_pgx (drug_name,cpic_drugid,pharmgkbid,chr,genesymbol,ensemblid);
 CREATE INDEX harmonised_cpic_pgx_i2 ON prada.harmonised_cpic_pgx (pharmgkbid,chr,genesymbol,ensemblid,diplotype, diplotypekey);
@@ -392,6 +398,7 @@ p.diplotype,
 p.description,
 p.result,
 p.activityscore,
+p.activityscore_min_num,
 p.ehrpriority,
 p.consultationtext,
 p.prada_ehrpriority_num,
@@ -399,6 +406,7 @@ p.prada_cpiclevel_num,
 p.prada_pgkbcalevel_num,
 p.prada_usedforrecommendation_num,
 p.lookupkey,
+p.lookupmethod,
 p.diplotypekey,
 p.diplotype_frequency,
 p.allele1,

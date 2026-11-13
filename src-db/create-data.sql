@@ -159,6 +159,15 @@ WHERE name=ftc.drug_name;
 
 INSERT INTO prada.flockhart(drug_name,additional_modifier,gene_name,role,strength) SELECT drug_name,additional_modifier,cyp_enzyme,role,strength FROM public."flockhart_table.csv"
 ON CONFLICT DO NOTHING;
+UPDATE prada.flockhart f SET
+	strength_numeric=1
+WHERE strength='Weak';
+UPDATE prada.flockhart f SET
+	strength_numeric=2
+WHERE strength='Moderate';
+UPDATE prada.flockhart f SET
+	strength_numeric=3
+WHERE strength='Strong';
 
 UPDATE prada.drug SET
 	additional_modifier=NULL

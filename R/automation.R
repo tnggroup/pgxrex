@@ -313,7 +313,10 @@ PgxrexClass$methods(
     recs.medication.diet[record==3,record:="PradaC"]
 
 
-    recs.medication.diet<-recs.medication.diet[concomitant_medication_log_complete==2,] #only complete samples
+    recs.medication.diet<-recs.medication.diet[
+      concomitant_medication_log_complete==2 #only complete samples
+      & m_continuing==1 #only ongoing
+                                               ,]
 
     recs.blood_collection<-redcapDAO$exportRecords(
       vForms=c("blood_collection"),
@@ -323,10 +326,14 @@ PgxrexClass$methods(
     recs.blood_collection[record==2,record:="PradaB"]
     recs.blood_collection[record==3,record:="PradaC"]
 
-    recs.blood_collection<-recs.blood_collection[blood_collection_complete==2 & sample_genetic_yn==1,] #only complete samples
+    recs.blood_collection<-recs.blood_collection[
+      blood_collection_complete==2 #only complete samples
+      & sample_genetic_yn==1 #only samples with genetics collected
+      ,]
     recs.blood_collection[,date_blood_collect.parsed:=as.Date(date_blood_collect)]
-    setorder(recs.blood_collection, record, -date_blood_collect.parsed)
-    recs.blood_collection.top<-recs.blood_collection[, .(count = .N, date_blood_collect.parsed = head(.SD, 1)$date_blood_collect.parsed), by = c("record","redcap_event_name")] #most recent blood collection per record
+    setorder(recs.blood_collection, record, -date_blood_collect.parsed,redcap_event_name)
+    recs.blood_collection.top<-recs.blood_collection[, .(count = .N, date_blood_collect.parsed = head(.SD, 1)$date_blood_collect.parsed), by = c("record")] #most recent blood collection per record
+    #"redcap_event_name"
 
     cDate<-Sys.Date()
     recs.blood_collection.top[,current.date:=as.Date(cDate)][,dateDiff:=as.integer(difftime(current.date, date_blood_collect.parsed, units = "days"))]
@@ -334,6 +341,21 @@ PgxrexClass$methods(
     #recs.sel.wide<-dcast(recs.sel,  record + redcap_event_name + redcap_repeat_instrument + redcap_repeat_instance ~ field_name, value.var = "value")
 
 
+    recs.summary<-as.data.table(data.frame(record=sampleMeta$barcode))
+    #recs.summary[,]
+    recs.summary<-merge(recs.summary,recs.medication.diet, by = "record", all = T)
+    recs.summary[recs.blood_collection.top,on=.(record=record), c('bloodRecordCount','date_blood_collect.parsed','blood.current.date','blood.dateDiff') := list(i.count,i.date_blood_collect.parsed,i.current.date,i.dateDiff)]
+
+    if(length(sampleMeta$barcode)>0){
+      for(iParticipant in 1:length(sampleMeta$barcode)){
+
+          cRecs<-recs.summary[record==eval(sampleMeta$barcode[iParticipant]) & !is.na(m_medication),]
+          if(nrow(cRecs)>0){
+            #perform phenoconversion
+
+          }
+      }
+    }
 
     ##read phenoconversion data
     if(testFlag.offline){

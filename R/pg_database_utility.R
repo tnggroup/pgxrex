@@ -224,3 +224,17 @@ PgxrexPgDatabaseUtilityClass$methods(
 
   }
 )
+
+PgxrexPgDatabaseUtilityClass$methods(
+  getPGXRecommendation=function(
+    dfGenotypes, #gene,diplotype
+    dfPhenotypeModifiers=NULL, #modifier_key - links to prada.drug.external_key_mapping
+    ){
+
+    qString <- "SELECT * FROM prada.chromosome"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+    return(res)
+  }
+)

@@ -193,6 +193,11 @@ CREATE INDEX harmonised_cpic_pgx_i3 ON prada.harmonised_cpic_pgx (prada_ehrprior
 --SELECT * FROM  prada.harmonised_cpic_pgx tp ORDER by drug_name;
 --SELECT * FROM  prada.harmonised_cpic_pgx tp WHERE guideline_name IS NULL ORDER by drug_name;
 
+--SELECT DISTINCT tp.lookupmethod FROM prada.harmonised_cpic_pgx tp;
+--ACTIVITY_SCORE
+--ALLELE_STATUS
+--PHENOTYPE
+
 --SELECT * FROM  prada.harmonised_cpic_pgx p WHERE p.genesymbol = 'SOD2';
 /*
 SELECT DISTINCT genesymbol
@@ -439,7 +444,7 @@ WHERE g.in_pgx=TRUE OR g.in_cpic=TRUE OR g.has_cpiclevel=TRUE OR g.in_dpwg=TRUE 
 LIMIT 100;*/
 --SELECT DISTINCT chr,bp1,bp2,gene_name,gene_id FROM  prada.harmonised_combined_pgx tp WHERE prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0 OR prada_pgkbcalevel_num > 0 ORDER by chr,bp1,bp2;
 --SELECT DISTINCT chr,bp1,bp2,gene_name,gene_id,drug_class FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_class IS NOT NULL AND (prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0) ORDER by gene_name,chr,bp1,bp2; --antidepressant with some pgx literture support
-
+--SELECT DISTINCT tp.result FROM  prada.harmonised_combined_pgx tp WHERE tp.gene_name='CYP2C19' AND tp.drug_class IS NOT NULL AND tp.usedforrecommendation =TRUE AND prada_cpiclevel_num > 4 ORDER by tp.result;
 
 --DROP MATERIALIZED VIEW prada.harmonised_combined_pgx_gene;
 CREATE MATERIALIZED VIEW prada.harmonised_combined_pgx_gene

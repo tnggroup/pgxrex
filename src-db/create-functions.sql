@@ -403,6 +403,7 @@ gene_name text,
 diplotype text,
 result text,
 activityscore text,
+activityscore_min_num numeric,
 recommendation numeric,
 ehrpriority text,
 drugrecommendation text,
@@ -450,6 +451,7 @@ dipcyp2d6_check integer
 			pgx.diplotype,
 			pgx.result,
 			pgx.activityscore,
+			pgx.activityscore_min_num,
 			pgx.recommendation,
 			pgx.description,
 			pgx.ehrpriority,
@@ -557,6 +559,7 @@ dipcyp2d6_check integer
 	rec2.diplotype,
 	rec2.result,
 	rec2.activityscore,
+	rec2.activityscore_min_num,
 	rec2.recommendation,
 	rec2.description,
 	rec2.ehrpriority,
@@ -664,20 +667,51 @@ SELECT rec.* FROM
 		rec AS (SELECT * FROM prada.get_application_recommendation()),
 		d_inhibitor AS (SELECT DISTINCT ON (flockhart.gene_name) flockhart.gene_name, flockhart.strength_numeric FROM t_phenoconverters_input pc INNER JOIN prada.drug ON pc.external_key_mapping=drug.external_key_mapping INNER JOIN prada.flockhart ON drug.name=flockhart.drug_name WHERE flockhart.role='Inhibitor' ORDER BY gene_name, strength_numeric DESC),
 		d_inducer AS (SELECT DISTINCT ON (flockhart.gene_name) flockhart.gene_name, flockhart.strength_numeric FROM t_phenoconverters_input pc INNER JOIN prada.drug ON pc.external_key_mapping=drug.external_key_mapping INNER JOIN prada.flockhart ON drug.name=flockhart.drug_name WHERE flockhart.role='Inducer' ORDER BY gene_name, strength_numeric DESC)
-	SELECT rec.*,
+	SELECT 
+		ROW_NUMBER() OVER (ORDER BY rec.drug_name, rec.gene_name, rec.diplotype, rec.recommendation) AS recommendation_rn,
+		rec.*,
 		d_inhibitor.strength_numeric AS strength_inhibitor,
 		d_inducer.strength_numeric AS strength_inducer,
 		(
 		CASE
-			WHEN rec.gene_name='CYP2D6' AND d_inhibitor.strength_numeric=3 THEN ((activityscore::numeric) * 0)
-			WHEN rec.gene_name='CYP2D6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN ((activityscore::numeric) * 0.5)
-			ELSE activityscore::numeric
-			END
-		) AS converted_activityscore
+			WHEN rec.gene_name='CYP2D6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
+			WHEN rec.gene_name='CYP2D6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
+			WHEN rec.gene_name='CYP2D6' AND d_inhibitor.strength_numeric IS NULL THEN activityscore_min_num
+			WHEN rec.gene_name='CYP2B6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
+			WHEN rec.gene_name='CYP2B6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
+			WHEN rec.gene_name='CYP2B6' AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1.5) THEN (activityscore_min_num * 1.25)
+			WHEN rec.gene_name='CYP2B6' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN activityscore_min_num
+			ELSE NULL
+		END
+		) AS converted_activityscore,
+		(
+		CASE
+			WHEN rec.gene_name='CYP2C19' AND d_inhibitor.strength_numeric=3 THEN 'Poor Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND rec.result='Indeterminate' THEN 'Indeterminate'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Ultrarapid Metabolizer' OR rec.result='Likely Ultrarapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Rapid Metabolizer' OR rec.result='Likely Rapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer' --Note, we treat all RM as UM
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Normal Metabolizer' OR rec.result='Likely Normal Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Intermediate Metabolizer' OR rec.result='Likely Intermediate Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Poor Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND d_inducer.strength_numeric=3 THEN 'Ultrarapid Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Ultrarapid Metabolizer' OR rec.result='Likely Ultrarapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Rapid Metabolizer' OR rec.result='Likely Rapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Normal Metabolizer' OR rec.result='Likely Normal Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer' --Note, we treat all RM as UM
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Intermediate Metabolizer' OR rec.result='Likely Intermediate Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND (rec.result='Poor Metabolizer' OR rec.result='Likely Poor Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN rec.gene_name='CYP2C19' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN rec.result
+			WHEN rec.gene_name='CYP2C19' THEN 'ERROR_NOT_HANDLED_RESULT_SITUATION'
+			ELSE NULL
+		END
+		) AS converted_result
 	FROM rec
 	LEFT OUTER JOIN d_inhibitor ON rec.gene_name=d_inhibitor.gene_name
-	LEFT OUTER JOIN d_inducer ON rec.gene_name=d_inducer.gene_name
-) rec;
+	LEFT OUTER JOIN d_inducer ON rec.gene_name=d_inducer.gene_name 
+) rec
+LEFT OUTER JOIN prada.harmonised_cpic_pgx p ON --we trust the ensemblid and chr mapping because of the harmonised cpic pgx view
+		p.genesymbol=rec.gene_name
+		AND p.drug_name=rec.drug_name
+LEFT OUTER JOIN cpic.recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid 
+												AND p.lookupmethod= p.lookupkey::jsonb <@ r.lookupkey;
 
 $$ LANGUAGE sql;
 

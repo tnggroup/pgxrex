@@ -197,6 +197,7 @@ CREATE INDEX harmonised_cpic_pgx_i3 ON prada.harmonised_cpic_pgx (prada_ehrprior
 --ACTIVITY_SCORE
 --ALLELE_STATUS
 --PHENOTYPE
+--SELECT tp.* FROM prada.harmonised_cpic_pgx tp WHERE tp.lookupmethod ='ALLELE_STATUS';
 
 --SELECT * FROM  prada.harmonised_cpic_pgx p WHERE p.genesymbol = 'SOD2';
 /*
@@ -379,6 +380,7 @@ g.in_pharmvar,
 g.in_cmrg,
 g.in_pharmcat,
 p.drug_name,
+p.cpic_drugid,
 p.pharmgkbid,
 p.rxnormid,
 p.drugbankid,
@@ -431,7 +433,7 @@ LEFT OUTER JOIN prada.harmonised_cpic_pgx p ON --we trust the ensemblid and chr 
 	p.ensemblid=g.gene_id
 	AND g.chr=p.chr
 LEFT OUTER JOIN prada.drug d ON (p.rxnormid=d.rxnormid OR (d.rxnormid IS NULL AND p.drug_name=d.name))
-LEFT OUTER JOIN cpic.recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid AND p.lookupkey::jsonb <@  r.lookupkey 
+LEFT OUTER JOIN cpic.recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid AND p.lookupkey::jsonb <@ r.lookupkey --this considers both the json key and value
 WHERE g.in_pgx=TRUE OR g.in_cpic=TRUE OR g.has_cpiclevel=TRUE OR g.in_dpwg=TRUE OR g.in_twist=TRUE OR g.in_pharmvar=TRUE OR g.in_cmrg=TRUE OR g.in_pharmcat=TRUE OR p.ensemblid IS NOT NULL
 --AND d.type !='cancer'
 ;
@@ -527,6 +529,4 @@ CREATE INDEX harmonised_combined_drug_i ON prada.harmonised_combined_drug (type,
 --SELECT * FROM prada.harmonised_combined_drug ORDER BY type,class,num_diplotype DESC, drug_name;
 --SELECT * FROM prada.harmonised_combined_drug WHERE type = 'antidepressant' ORDER BY type,class,num_diplotype DESC, drug_name;
 --SELECT * FROM prada.drug WHERE type ='antidepressant';
-
-
 

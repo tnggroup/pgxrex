@@ -390,13 +390,238 @@ SELECT 'RxNorm:5640' AS drugid
 	SELECT 'RxNorm:1256'; --azathioprine
 	*/
 
+--DROP FUNCTION prada.prepare_recommendations_from_genotype_input;
+CREATE OR REPLACE FUNCTION prada.prepare_recommendations_from_genotype_input() RETURNS int AS $$
+DECLARE
+    nid int = NULL;
+BEGIN
+	DROP TABLE IF EXISTS t_prepared_recommendations;
+	CREATE TEMP TABLE IF NOT EXISTS t_prepared_recommendations AS
+	SELECT 
+		pgx.drug_name,
+		pgx.cpic_drugid,
+		pgx.pharmgkbid,
+		pgx.rxnormid,
+		pgx.drugbankid,
+		pgx.atcid,
+		pgx.flowchart,
+		pgx.version,
+		pgx.guidelineid,
+		pgx.cpiclevel,
+		pgx.pgkbcalevel,
+		pgx.usedforrecommendation,
+		pgx.guideline_name,
+		pgx.guideline_url,
+		pgx.gene_name,
+		pgx.diplotype,
+		pgx.result,
+		pgx.activityscore,
+		pgx.activityscore_min_num,
+		pgx.lookupkey,
+		pgx.lookupmethod,
+		pgx.recommendation,
+		pgx.description,
+		pgx.ehrpriority,
+		pgx.consultationtext,
+		pgx.diplotype_frequency,
+		pgx.allele1,
+		pgx.allele2,
+		pgx.allele1_frequency,
+		pgx.allele2_frequency,
+		pgx.implications,
+		pgx.drugrecommendation,
+		pgx.phenotypes,
+		(pgx.phenotypes ->> 'CYP2B6')::text phenotype_cyp2b6,
+		(pgx.phenotypes ->> 'CYP2C19')::text phenotype_cyp2c19,
+		(pgx.phenotypes ->> 'CYP2D6')::text phenotype_cyp2d6,
+		(
+		CASE
+			WHEN pgx.gene_name='CYP2B6' THEN 0
+			WHEN pgx.gene_name='CYP2C19' THEN 0
+			WHEN pgx.gene_name='CYP2D6' THEN 0
+			ELSE 1
+			END
+		) AS phenotype_other,
+		pgx.classification,
+		pgx.population,
+		pgx.comments,
+		pgx.prada_ehrpriority_num,
+		pgx.prada_cpiclevel_num,
+		pgx.prada_pgkbcalevel_num
+		FROM prada.harmonised_combined_pgx pgx
+		INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+		INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
+		WHERE pgx.recommendation IS NOT NULL;
 
---DROP FUNCTION prada.get_application_recommendation;
-CREATE OR REPLACE FUNCTION prada.get_application_recommendation() RETURNS TABLE(
+	RETURN nid;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+DROP TABLE IF EXISTS t_drug_gene_phenotype_input;
+CREATE TEMP TABLE IF NOT EXISTS t_drug_gene_phenotype_input AS
+SELECT DISTINCT ON (drug_name, gene_name) drug_name, gene_name, result AS phenotype, activityscore_min_num AS activityscore
+FROM t_application_recommendation_filtered_drug_gene rec;
+
+--SELECT * FROM t_drug_gene_phenotype_input;
+
+
+--DROP FUNCTION prada.prepare_recommendations_from_phenotype_input;
+CREATE OR REPLACE FUNCTION prada.prepare_recommendations_from_phenotype_input() RETURNS int AS $$
+DECLARE
+    nid int = NULL;
+BEGIN
+	DROP TABLE IF EXISTS t_prepared_recommendations;
+	CREATE TEMP TABLE IF NOT EXISTS t_prepared_recommendations AS
+	SELECT 
+		pgx.drug_name,
+		pgx.cpic_drugid,
+		pgx.pharmgkbid,
+		pgx.rxnormid,
+		pgx.drugbankid,
+		pgx.atcid,
+		pgx.flowchart,
+		pgx.version,
+		pgx.guidelineid,
+		pgx.cpiclevel,
+		pgx.pgkbcalevel,
+		pgx.usedforrecommendation,
+		pgx.guideline_name,
+		pgx.guideline_url,
+		pgx.gene_name,
+		pgx.diplotype,
+		pgx.result,
+		pgx.activityscore,
+		pgx.activityscore_min_num,
+		pgx.lookupkey,
+		pgx.lookupmethod,
+		pgx.recommendation,
+		pgx.description,
+		pgx.ehrpriority,
+		pgx.consultationtext,
+		pgx.diplotype_frequency,
+		pgx.allele1,
+		pgx.allele2,
+		pgx.allele1_frequency,
+		pgx.allele2_frequency,
+		pgx.implications,
+		pgx.drugrecommendation,
+		pgx.phenotypes,
+		(pgx.phenotypes ->> 'CYP2B6')::text phenotype_cyp2b6,
+		(pgx.phenotypes ->> 'CYP2C19')::text phenotype_cyp2c19,
+		(pgx.phenotypes ->> 'CYP2D6')::text phenotype_cyp2d6,
+		(
+		CASE
+			WHEN pgx.gene_name='CYP2B6' THEN 0
+			WHEN pgx.gene_name='CYP2C19' THEN 0
+			WHEN pgx.gene_name='CYP2D6' THEN 0
+			ELSE 1
+			END
+		) AS phenotype_other,
+		pgx.classification,
+		pgx.population,
+		pgx.comments,
+		pgx.prada_ehrpriority_num,
+		pgx.prada_cpiclevel_num,
+		pgx.prada_pgkbcalevel_num
+		FROM prada.harmonised_combined_pgx pgx
+		INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+		INNER JOIN t_drug_gene_phenotype_input hcdata ON hcdata.drug_name=pgx.drug_name AND hcdata.gene_name = pgx.gene_name AND
+			(
+				(hcdata.phenotype = pgx.result AND pgx.lookupmethod='PHENOTYPE') OR (hcdata.activityscore >= pgx.activityscore_min_num AND pgx.lookupmethod='ACTIVITY_SCORE') --not dealing with the allele allele codes yet
+			)
+		WHERE pgx.recommendation IS NOT NULL;
+
+	RETURN nid;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+--DROP FUNCTION prada.generate_application_recommendation;
+CREATE OR REPLACE FUNCTION prada.generate_application_recommendation() RETURNS int AS $$
+DECLARE
+    nid int = NULL;
+BEGIN
+	DROP TABLE IF EXISTS t_application_recommendation;
+	CREATE TEMP TABLE IF NOT EXISTS t_application_recommendation AS
+	SELECT 
+		rec2.*,
+		(dipcyp2b6_check + dipcyp2c19_check + dipcyp2d6_check) AS genecheck_sum
+	FROM (
+		WITH 
+		rec AS (SELECT * FROM t_prepared_recommendations),
+		dip AS (
+			SELECT DISTINCT ON (pgx.drug_name,pgx.gene_name,pgx.diplotype,pgx.result,pgx.activityscore) pgx.drug_name,pgx.gene_name,pgx.diplotype,pgx.result,pgx.activityscore
+			FROM prada.harmonised_combined_pgx pgx
+			INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+			INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
+		)
+		SELECT 
+		rec.*,
+		pr.prada_start_dose,
+		pr.prada_target_dose,
+		pr.prada_titration_speed,
+		pr.prada_switch_drug,
+		pr.prada_switch1_drug,
+		pr.prada_switch1_gene,
+		pr.prada_switch2_drug,
+		pr.prada_switch2_gene,
+		pr.prada_tdm,
+		pr.version prada_recommendation_version,
+		(dipcyp2b6.result IS NOT NULL)::integer AS dipcyp2b6_check, (dipcyp2c19.result IS NOT NULL)::integer AS dipcyp2c19_check, (dipcyp2d6.result IS NOT NULL)::integer AS dipcyp2d6_check
+		--dipcyp2b6.result AS dipcyp2b6_result, dipcyp2c19.result AS dipcyp2c19_result, dipcyp2d6.result AS dipcyp2d6_result
+		FROM rec
+		LEFT OUTER JOIN prada.recommendation pr ON rec.recommendation = pr.recommendation AND rec.guidelineid = pr.guideline AND rec.drug_name = pr.drugid AND rec.gene_name = pr.gene_name
+		LEFT OUTER JOIN dip dipcyp2b6 ON rec.drug_name = dipcyp2b6.drug_name 
+			AND dipcyp2b6.gene_name='CYP2B6' AND rec.phenotype_cyp2b6=dipcyp2b6.result
+		LEFT OUTER JOIN dip dipcyp2c19 ON rec.drug_name = dipcyp2c19.drug_name 
+			AND dipcyp2c19.gene_name='CYP2C19' AND rec.phenotype_cyp2c19=dipcyp2c19.result
+		LEFT OUTER JOIN dip dipcyp2d6 ON rec.drug_name = dipcyp2d6.drug_name 
+			AND dipcyp2d6.gene_name='CYP2D6' AND rec.phenotype_cyp2d6=dipcyp2d6.result
+	) rec2
+	WHERE 
+		(phenotype_cyp2b6 IS NULL OR dipcyp2b6_check=1) AND (phenotype_cyp2c19 IS NULL OR dipcyp2c19_check=1) AND (phenotype_cyp2d6 IS NULL OR dipcyp2d6_check = 1)
+	ORDER BY drug_name,gene_name,diplotype,cpiclevel,classification,guidelineid;
+
+	DROP TABLE IF EXISTS t_application_recommendation_filtered_drug_gene;
+	CREATE TEMP TABLE IF NOT EXISTS t_application_recommendation_filtered_drug_gene AS
+	SELECT DISTINCT ON (drug_name,cpic_drugid,gene_name) rec.*
+	FROM t_application_recommendation rec
+	--WHERE usedforrecommendation=TRUE
+	ORDER BY drug_name,cpic_drugid,gene_name, genecheck_sum DESC, prada_cpiclevel_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC;
+
+	DROP TABLE IF EXISTS t_application_recommendation_filtered_drug;
+	CREATE TEMP TABLE IF NOT EXISTS t_application_recommendation_filtered_drug AS
+	SELECT DISTINCT ON (drug_name,cpic_drugid) rec.*
+	FROM t_application_recommendation rec
+	--WHERE usedforrecommendation=TRUE
+	ORDER BY drug_name,cpic_drugid,genecheck_sum DESC, prada_cpiclevel_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC, gene_name;
+
+
+	RETURN nid;
+
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM prada.generate_application_recommendation();
+--SELECT * FROM t_recommendations_from_genotype_input;
+--SELECT * FROM t_application_recommendation;
+--SELECT * FROM t_application_recommendation_filtered_drug_gene;
+--SELECT * FROM t_application_recommendation_filtered_drug;
+
+
+
+--OLD function
+--DROP FUNCTION prada.get_application_recommendation_old;
+CREATE OR REPLACE FUNCTION prada.get_application_recommendation_old() RETURNS TABLE(
 drug_name text,
+cpic_drugid text,
 cpiclevel text,
 pgkbcalevel text,
 flowchart text,
+guidelineid integer,
 guideline_name text,
 guideline_url text,
 gene_name text,
@@ -404,7 +629,10 @@ diplotype text,
 result text,
 activityscore text,
 activityscore_min_num numeric,
+lookupkey json,
+lookupmethod text,
 recommendation numeric,
+classification text,
 ehrpriority text,
 drugrecommendation text,
 phenotypes text, --jsonb,
@@ -412,7 +640,6 @@ phenotype_cyp2b6 text,
 phenotype_cyp2c19 text,
 phenotype_cyp2d6 text,
 phenotype_other numeric,
---classification text,
 --prada_ehrpriority_num numeric,
 prada_cpiclevel_num numeric,
 --prada_pgkbcalevel_num numeric,
@@ -435,6 +662,7 @@ dipcyp2d6_check integer
 		WITH rec AS (
 			SELECT 
 			pgx.drug_name,
+			pgx.cpic_drugid,
 			pgx.pharmgkbid,
 			pgx.rxnormid,
 			pgx.drugbankid,
@@ -452,6 +680,8 @@ dipcyp2d6_check integer
 			pgx.result,
 			pgx.activityscore,
 			pgx.activityscore_min_num,
+			pgx.lookupkey,
+			pgx.lookupmethod,
 			pgx.recommendation,
 			pgx.description,
 			pgx.ehrpriority,
@@ -550,9 +780,11 @@ dipcyp2d6_check integer
 	)
 	SELECT
 	rec2.drug_name,
+	rec2.cpic_drugid,
 	rec2.cpiclevel,
 	rec2.pgkbcalevel,
 	rec2.flowchart,
+	rec2.guidelineid,
 	rec2.guideline_name,
 	rec2.guideline_url,
 	rec2.gene_name,
@@ -560,7 +792,10 @@ dipcyp2d6_check integer
 	rec2.result,
 	rec2.activityscore,
 	rec2.activityscore_min_num,
+	rec2.lookupkey,
+	rec2.lookupmethod,
 	rec2.recommendation,
+	rec2.classification,
 	rec2.description,
 	rec2.ehrpriority,
 	rec2.consultationtext,
@@ -595,7 +830,7 @@ dipcyp2d6_check integer
 
 $$ LANGUAGE sql;
 
---SELECT * FROM prada.get_application_recommendation();
+--SELECT * FROM prada.get_application_recommendation_old();
 
 
 
@@ -661,57 +896,77 @@ dipcyp2c19_check integer,
 dipcyp2d6_check integer
 ) AS $$
 
-SELECT rec.* FROM 
+SELECT 
+rec.*,
+--rec.recommendation_rn,
+--rec.gene_name,
+r.* 
+FROM 
 (
 	WITH 
-		rec AS (SELECT * FROM prada.get_application_recommendation()),
+		pgx AS (SELECT * FROM prada.get_application_recommendation()), --we need the filtered version based on genotype as applied here
+--		pgx AS (
+--			SELECT pgx.* FROM
+--			prada.harmonised_combined_pgx pgx
+--			INNER JOIN prada.drug d ON pgx.drug_name = d.name AND d.selected_for_analysis IS NOT NULL
+--			INNER JOIN t_gene_diplotype_input hcdata ON hcdata.gene = pgx.gene_name AND hcdata.diplotype = pgx.diplotype
+--		),
 		d_inhibitor AS (SELECT DISTINCT ON (flockhart.gene_name) flockhart.gene_name, flockhart.strength_numeric FROM t_phenoconverters_input pc INNER JOIN prada.drug ON pc.external_key_mapping=drug.external_key_mapping INNER JOIN prada.flockhart ON drug.name=flockhart.drug_name WHERE flockhart.role='Inhibitor' ORDER BY gene_name, strength_numeric DESC),
 		d_inducer AS (SELECT DISTINCT ON (flockhart.gene_name) flockhart.gene_name, flockhart.strength_numeric FROM t_phenoconverters_input pc INNER JOIN prada.drug ON pc.external_key_mapping=drug.external_key_mapping INNER JOIN prada.flockhart ON drug.name=flockhart.drug_name WHERE flockhart.role='Inducer' ORDER BY gene_name, strength_numeric DESC)
 	SELECT 
-		ROW_NUMBER() OVER (ORDER BY rec.drug_name, rec.gene_name, rec.diplotype, rec.recommendation) AS recommendation_rn,
-		rec.*,
+		ROW_NUMBER() OVER (ORDER BY pgx.drug_name, pgx.gene_name, pgx.diplotype, pgx.recommendation) AS recommendation_rn,
+		pgx.*,
 		d_inhibitor.strength_numeric AS strength_inhibitor,
 		d_inducer.strength_numeric AS strength_inducer,
 		(
 		CASE
-			WHEN rec.gene_name='CYP2D6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
-			WHEN rec.gene_name='CYP2D6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
-			WHEN rec.gene_name='CYP2D6' AND d_inhibitor.strength_numeric IS NULL THEN activityscore_min_num
-			WHEN rec.gene_name='CYP2B6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
-			WHEN rec.gene_name='CYP2B6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
-			WHEN rec.gene_name='CYP2B6' AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1.5) THEN (activityscore_min_num * 1.25)
-			WHEN rec.gene_name='CYP2B6' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN activityscore_min_num
+			WHEN pgx.gene_name='CYP2D6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
+			WHEN pgx.gene_name='CYP2D6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
+			WHEN pgx.gene_name='CYP2D6' AND d_inhibitor.strength_numeric IS NULL THEN activityscore_min_num
+			WHEN pgx.gene_name='CYP2B6' AND d_inhibitor.strength_numeric=3 THEN (activityscore_min_num * 0)
+			WHEN pgx.gene_name='CYP2B6' AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN (activityscore_min_num * 0.5)
+			WHEN pgx.gene_name='CYP2B6' AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1.5) THEN (activityscore_min_num * 1.25)
+			WHEN pgx.gene_name='CYP2B6' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN activityscore_min_num
 			ELSE NULL
 		END
 		) AS converted_activityscore,
 		(
 		CASE
-			WHEN rec.gene_name='CYP2C19' AND d_inhibitor.strength_numeric=3 THEN 'Poor Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND rec.result='Indeterminate' THEN 'Indeterminate'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Ultrarapid Metabolizer' OR rec.result='Likely Ultrarapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Rapid Metabolizer' OR rec.result='Likely Rapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer' --Note, we treat all RM as UM
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Normal Metabolizer' OR rec.result='Likely Normal Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Intermediate Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Intermediate Metabolizer' OR rec.result='Likely Intermediate Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Poor Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND d_inducer.strength_numeric=3 THEN 'Ultrarapid Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Ultrarapid Metabolizer' OR rec.result='Likely Ultrarapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Rapid Metabolizer' OR rec.result='Likely Rapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Normal Metabolizer' OR rec.result='Likely Normal Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer' --Note, we treat all RM as UM
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Intermediate Metabolizer' OR rec.result='Likely Intermediate Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Normal Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND (rec.result='Poor Metabolizer' OR rec.result='Likely Poor Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Intermediate Metabolizer'
-			WHEN rec.gene_name='CYP2C19' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN rec.result
-			WHEN rec.gene_name='CYP2C19' THEN 'ERROR_NOT_HANDLED_RESULT_SITUATION'
+			WHEN pgx.gene_name='CYP2C19' AND d_inhibitor.strength_numeric=3 THEN 'Poor Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND pgx.result='Indeterminate' THEN 'Indeterminate'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer' --Note, we treat all RM as UM
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Poor Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND d_inducer.strength_numeric=3 THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer' --Note, we treat all RM as UM
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Poor Metabolizer' OR pgx.result='Likely Poor Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN pgx.result
+			WHEN pgx.gene_name='CYP2C19' THEN 'ERROR_NOT_HANDLED_RESULT_SITUATION'
 			ELSE NULL
 		END
 		) AS converted_result
-	FROM rec
-	LEFT OUTER JOIN d_inhibitor ON rec.gene_name=d_inhibitor.gene_name
-	LEFT OUTER JOIN d_inducer ON rec.gene_name=d_inducer.gene_name 
+	FROM pgx
+	LEFT OUTER JOIN d_inhibitor ON pgx.gene_name=d_inhibitor.gene_name
+	LEFT OUTER JOIN d_inducer ON pgx.gene_name=d_inducer.gene_name 
 ) rec
-LEFT OUTER JOIN prada.harmonised_cpic_pgx p ON --we trust the ensemblid and chr mapping because of the harmonised cpic pgx view
-		p.genesymbol=rec.gene_name
-		AND p.drug_name=rec.drug_name
-LEFT OUTER JOIN cpic.recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid 
-												AND p.lookupmethod= p.lookupkey::jsonb <@ r.lookupkey;
+LEFT OUTER JOIN cpic.recommendation r ON rec.cpic_drugid=r.drugid AND rec.guidelineid = r.guidelineid
+AND (
+	(rec.lookupmethod='PHENOTYPE' AND json_build_object(rec.gene_name,converted_result)::jsonb <@ r.lookupkey)
+	OR
+	(
+		rec.lookupmethod='ACTIVITY_SCORE' 
+		AND (
+			json_build_object(rec.gene_name,converted_activityscore)::jsonb <@ r.lookupkey 
+		OR json_build_object(rec.gene_name,'≥'||converted_activityscore)::jsonb <@ r.lookupkey
+		) --we match converted activity score values both to exact matches and to larger or equal matches
+	)
+	OR
+	(rec.lookupmethod='ALLELE_STATUS' AND json_build_object(rec.gene_name,rec.diplotype)::jsonb <@ r.lookupkey)
+);
 
 $$ LANGUAGE sql;
 

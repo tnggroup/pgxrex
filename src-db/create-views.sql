@@ -360,6 +360,39 @@ CREATE UNIQUE INDEX harmonised_gene_i ON prada.harmonised_gene (chrn,bp1,bp2,gen
 --SELECT * FROM prada.harmonised_gene WHERE gene_name= 'Metazoa_SRP';
 --SELECT DISTINCT chr FROM prada.harmonised_gene;
 
+--DROP MATERIALIZED VIEW prada.harmonised_recommendation;
+CREATE MATERIALIZED VIEW prada.harmonised_recommendation --OR REPLACE
+AS 
+SELECT
+r.*,
+(
+	CASE
+		WHEN r.classification='Strong' THEN 2
+		WHEN r.classification='Moderate' THEN 1
+		WHEN r.classification='No Recommendation' THEN 0
+		ELSE -1
+	END
+) AS classification_strength_num,
+d.name AS drug_name,
+pr.prada_start_dose,
+pr.prada_target_dose,
+pr.prada_titration_speed,
+pr.prada_switch_drug,
+pr.prada_switch1_drug,
+pr.prada_switch1_gene,
+pr.prada_switch2_drug,
+pr.prada_switch2_gene,
+pr.prada_tdm,
+pr.version prada_recommendation_version
+FROM
+cpic.recommendation r
+LEFT OUTER JOIN cpic.drug d ON d.drugid = r.drugid
+LEFT OUTER JOIN (SELECT DISTINCT ON (recommendation,drugid) pr.* FROM prada.recommendation pr ORDER BY recommendation,drugid,version DESC, gene_name) pr ON r.id = pr.recommendation AND r.guidelineid = pr.guideline AND d.name = pr.drugid
+;
+--SELECT DISTINCT classification FROM cpic.recommendation;
+CREATE UNIQUE INDEX harmonised_recommendation_u ON prada.harmonised_recommendation (id);
+CREATE UNIQUE INDEX harmonised_recommendation_i ON prada.harmonised_recommendation (guidelineid,drug_name,drugid,id);
+
 --CPIC recommendations are linked in here
 --DROP VIEW prada.harmonised_combined_pgx;
 CREATE OR REPLACE VIEW prada.harmonised_combined_pgx
@@ -425,15 +458,26 @@ r.implications,
 r.drugrecommendation,
 r.phenotypes,
 r.classification,
+r.classification_strength_num,
 r.population,
-r.comments
+r.comments,
+r.prada_start_dose,
+r.prada_target_dose,
+r.prada_titration_speed,
+r.prada_switch_drug,
+r.prada_switch1_drug,
+r.prada_switch1_gene,
+r.prada_switch2_drug,
+r.prada_switch2_gene,
+r.prada_tdm,
+r.version prada_recommendation_version
 FROM 
 prada.harmonised_gene g
 LEFT OUTER JOIN prada.harmonised_cpic_pgx p ON --we trust the ensemblid and chr mapping because of the harmonised cpic pgx view
 	p.ensemblid=g.gene_id
 	AND g.chr=p.chr
 LEFT OUTER JOIN prada.drug d ON (p.rxnormid=d.rxnormid OR (d.rxnormid IS NULL AND p.drug_name=d.name))
-LEFT OUTER JOIN cpic.recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid AND p.lookupkey::jsonb <@ r.lookupkey --this considers both the json key and value
+LEFT OUTER JOIN prada.harmonised_recommendation r ON p.cpic_drugid=r.drugid AND p.guidelineid = r.guidelineid AND p.lookupkey::jsonb <@ r.lookupkey --this considers both the json key and value
 WHERE g.in_pgx=TRUE OR g.in_cpic=TRUE OR g.has_cpiclevel=TRUE OR g.in_dpwg=TRUE OR g.in_twist=TRUE OR g.in_pharmvar=TRUE OR g.in_cmrg=TRUE OR g.in_pharmcat=TRUE OR p.ensemblid IS NOT NULL
 --AND d.type !='cancer'
 ;

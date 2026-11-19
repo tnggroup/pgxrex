@@ -366,7 +366,13 @@ SELECT 'CYP2D6' AS gene, '*17x2/*45x2' AS diplotype
 	UNION ALL
 	SELECT 'CYP2C19', '*17/*17';
 
-
+--test with our genotype
+CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
+SELECT 'CYP2D6' AS gene, '*17/*41' AS diplotype
+	UNION ALL
+	SELECT 'CYP2B6','*1/*1'
+	UNION ALL
+	SELECT 'CYP2C19', '*1/*10';
 
 --test with consistently poor metabolisers
 --CREATE TEMP TABLE IF NOT EXISTS t_gene_diplotype_input AS
@@ -376,19 +382,6 @@ SELECT 'CYP2D6' AS gene, '*17x2/*45x2' AS diplotype
 --	UNION ALL
 --	SELECT 'CYP2C19', '*2/*2';
 
-/*
-DROP TABLE IF EXISTS t_drug_input;
-CREATE TEMP TABLE IF NOT EXISTS t_drug_input AS
-SELECT 'RxNorm:5640' AS drugid
-	UNION ALL
-	SELECT 'RxNorm:7407'
-	UNION ALL
-	SELECT 'RxNorm:32937'
-	UNION ALL
-	SELECT 'RxNorm:36437'
-	UNION ALL
-	SELECT 'RxNorm:1256'; --azathioprine
-	*/
 
 --DROP FUNCTION prada.prepare_recommendations_from_genotype_input;
 CREATE OR REPLACE FUNCTION prada.prepare_recommendations_from_genotype_input() RETURNS int AS $$
@@ -711,6 +704,12 @@ SELECT 94 AS external_key_mapping, 1 AS dummy --bupropion
 	SELECT 1011, 1 --cocaine
 	UNION ALL
 	SELECT 1046, 1; --rifampin
+
+--test with values from REDCap
+CREATE TEMP TABLE IF NOT EXISTS t_phenoconverters_input AS
+SELECT 14 AS external_key_mapping, 1 AS dummy
+	UNION ALL
+	SELECT 20, 1;
 
 --DROP FUNCTION prada.populate_drug_gene_phenotype_input_through_phenoconversion;
 CREATE OR REPLACE FUNCTION prada.populate_drug_gene_phenotype_input_through_phenoconversion() RETURNS int AS $$

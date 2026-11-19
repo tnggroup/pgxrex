@@ -227,14 +227,75 @@ PgxrexPgDatabaseUtilityClass$methods(
 
 PgxrexPgDatabaseUtilityClass$methods(
   getPGXRecommendation=function(
-    dfGenotypes, #gene,diplotype
-    dfPhenotypeModifiers=NULL, #modifier_key - links to prada.drug.external_key_mapping
+    dfGenotypes, #t_gene_diplotype_input: gene,diplotype
+    dfPhenotypeModifiers=NULL #t_phenoconverters_input: external_key_mapping - links to prada.drug.external_key_mapping
     ){
 
-    qString <- "SELECT * FROM prada.chromosome"
+    importDataAsTable(NULL,"t_gene_diplotype_input",dfGenotypes,T,T)
+
+    if(!is.null(dfPhenotypeModifiers)){
+      importDataAsTable(NULL,"t_phenoconverters_input",dfPhenotypeModifiers,T,T)
+    }
+
+    qString <- "SELECT * FROM prada.prepare_recommendations_from_genotype_input()"
     q <- dbSendQuery(connection,qString)
     res<-dbFetch(q)
     dbClearResult(q)
-    return(res)
+
+    qString <- "SELECT * FROM prada.generate_application_recommendation()"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+
+
+    if(!is.null(dfPhenotypeModifiers)){
+
+      #safety addition of dummy
+      if(ncol(dfPhenotypeModifiers)<2){
+        dfPhenotypeModifiers[,dummy:=1]
+      }
+
+      importDataAsTable(NULL,"t_phenoconverters_input",dfPhenotypeModifiers,T,T)
+
+      qString <- "SELECT * FROM prada.populate_drug_gene_phenotype_input_through_phenoconversion()"
+      q <- dbSendQuery(connection,qString)
+      res<-dbFetch(q)
+      dbClearResult(q)
+
+      qString <- "SELECT * FROM prada.prepare_recommendations_from_phenotype_input()"
+      q <- dbSendQuery(connection,qString)
+      res<-dbFetch(q)
+      dbClearResult(q)
+
+      qString <- "SELECT * FROM prada.generate_application_recommendation()"
+      q <- dbSendQuery(connection,qString)
+      res<-dbFetch(q)
+      dbClearResult(q)
+
+    }
+
+    qString <- "SELECT * FROM t_application_recommendation"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+    dfApplicationRecommendations<-res
+
+    qString <- "SELECT * FROM t_application_recommendation_filtered_drug_gene"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+    dfApplicationRecommendationsDrugGene<-res
+
+    qString <- "SELECT * FROM t_application_recommendation_filtered_drug"
+    q <- dbSendQuery(connection,qString)
+    res<-dbFetch(q)
+    dbClearResult(q)
+    dfApplicationRecommendationsDrug<-res
+
+    return(list(
+      dfApplicationRecommendations=dfApplicationRecommendations,
+      dfApplicationRecommendationsDrugGene=dfApplicationRecommendationsDrugGene,
+      dfApplicationRecommendationsDrug=dfApplicationRecommendationsDrug
+    ))
   }
 )

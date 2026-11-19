@@ -301,7 +301,7 @@ PgxrexClass$methods(
     #Group likely metaboliser phenotypes with their definitive category
     #Use activity score multipliers for CYP2B6 and CYP2D6. For CYP2C19 - use phenotype shifting.
 
-    browser()
+
 
     #****#hardocded for testing
     recs.medication.diet<-redcapDAO$exportRecords(
@@ -346,14 +346,41 @@ PgxrexClass$methods(
     recs.summary<-merge(recs.summary,recs.medication.diet, by = "record", all = T)
     recs.summary[recs.blood_collection.top,on=.(record=record), c('bloodRecordCount','date_blood_collect.parsed','blood.current.date','blood.dateDiff') := list(i.count,i.date_blood_collect.parsed,i.current.date,i.dateDiff)]
 
+    browser()
+
     if(length(sampleMeta$barcode)>0){
       for(iParticipant in 1:length(sampleMeta$barcode)){
 
-          cRecs<-recs.summary[record==eval(sampleMeta$barcode[iParticipant]) & !is.na(m_medication),]
+          cRecs<-recs.summary[record==eval(sampleMeta$barcode[iParticipant]) & !is.na(m_medication) & m_medication!="",]
           if(nrow(cRecs)>0){
-            #perform phenoconversion
+            #basic recommendations
+            combinedId<-paste0(analysisId,"_",sampleMeta$barcode[iParticipant])
+            cSampleSettings<-sampleSettingsList[[combinedId]]
 
-          }
+            recommendations.basic<-pgxrexApplicationDAO$getPGXRecommendation(dfGenotypes = cSampleSettings$pgx_calls_table_custom[!is.na(diplotype_name) & diplotype_name!="",.(gene,diplotype=diplotype_name)])
+            catl("Recommendations fetched for genotypes.")
+
+            # View(recommendations.basic$dfApplicationRecommendations)
+            # View(recommendations.basic$dfApplicationRecommendationsDrugGene)
+            # View(recommendations.basic$dfApplicationRecommendationsDrug)
+
+
+            dfPhenotypeModifiers<-cRecs[,.(external_key_mapping=as.integer(m_medication),dummy=1)]
+            recommendations.phenoconverted<-NULL
+            if(nrow(dfPhenotypeModifiers)){
+              recommendations.phenoconverted<-pgxrexApplicationDAO$getPGXRecommendation(dfGenotypes = cSampleSettings$pgx_calls_table_custom[!is.na(diplotype_name) & diplotype_name!="",.(gene,diplotype=diplotype_name)],dfPhenotypeModifiers = dfPhenotypeModifiers)
+              catl("Recommendations fetched for phenoconverted phenotypes.")
+
+              # View(recommendations.phenoconverted$dfApplicationRecommendations)
+              # View(recommendations.phenoconverted$dfApplicationRecommendationsDrugGene)
+              # View(recommendations.phenoconverted$dfApplicationRecommendationsDrug)
+            }
+
+            #feed back to REDCap
+            redcapDAO
+
+
+          } else warning(paste0("No REDCap data available for the participant ",sampleMeta$barcode[iParticipant]))
       }
     }
 

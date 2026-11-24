@@ -12,7 +12,7 @@ PgxrexClass$methods(
 
     if(is.null(contextDatabaseList$command)) contextDatabaseList["command"]<<-"about" #default to print and exit
 
-    shared()
+    if(!sharedRoutinesRunFlag) shared() #initialise with the shared routines run the sha
 
 
     #browser()
@@ -194,6 +194,7 @@ PgxrexClass$methods(
     redcapDAO<<-PgxrexRedcapUtilityClass(base_url=contextDatabaseList$redcapBaseUrl, apiToken=contextDatabaseList$redcapApiToken)
     catl("RedCap configured")
 
+    sharedRoutinesRunFlag<<-TRUE
 
   }
 )
@@ -239,9 +240,6 @@ PgxrexClass$methods(
     catl("Genomic regions established.")
 
 
-
-
-    #run analysis data collection - not tested!
     addAnalysisSetting(
       settingLabel = analysisId,
       folderPathAnalysisSequencingRaw = parsedAnalysisOptions["folderpathSequencing"],
@@ -288,12 +286,21 @@ PgxrexClass$methods(
 
     }
 
+
+    #external record mapping
+    sampleMeta$externalRecordMapping<<-sampleMeta$barcode
+    if(any(names(parsedAnalysisOptions)=="externalRecordMapping")){
+      externalRecordMapping<-strsplit(parsedAnalysisOptions["externalRecordMapping"],",")
+      externalRecordMapping<-lapply(externalRecordMapping,function(x){strsplit(x,":")})[[1]]
+      if(length(externalRecordMapping)>0){
+        for(iMapping in 1:length(externalRecordMapping)){
+          cMapping<-externalRecordMapping[[iMapping]]
+          sampleMeta[sampleMeta$barcode==cMapping[1],c("externalRecordMapping")]<<-cMapping[2]
+        }
+      }
+    }
+
     #setwd(folderpathLaunch)
-
-
-    #reporting
-    #TODO - when our table is set up
-    #browser()
 
 
     #phenoconversion
@@ -306,11 +313,8 @@ PgxrexClass$methods(
     #****#hardocded for testing
     recs.medication.diet<-redcapDAO$exportRecords(
       vForms=c("concomitant_medication_log","diet_lifestyle_exposures"),
-      filterRecord=c(1,2,3) #sampleMeta$barcode
+      filterRecord=sampleMeta$externalRecordMapping #sampleMeta$barcode
       )
-    recs.medication.diet[record==1,record:="PradaA"]
-    recs.medication.diet[record==2,record:="PradaB"]
-    recs.medication.diet[record==3,record:="PradaC"]
 
 
     recs.medication.diet<-recs.medication.diet[
@@ -320,11 +324,8 @@ PgxrexClass$methods(
 
     recs.blood_collection<-redcapDAO$exportRecords(
       vForms=c("blood_collection"),
-      filterRecord=c(1,2,3)
+      filterRecord=sampleMeta$externalRecordMapping
     )
-    recs.blood_collection[record==1,record:="PradaA"]
-    recs.blood_collection[record==2,record:="PradaB"]
-    recs.blood_collection[record==3,record:="PradaC"]
 
     recs.blood_collection<-recs.blood_collection[
       blood_collection_complete==2 #only complete samples
@@ -349,20 +350,56 @@ PgxrexClass$methods(
     browser()
 
     if(length(sampleMeta$barcode)>0){
+
+      #shared reported data
+      currentDatetimeString<-as.character(as.POSIXlt(Sys.time(), format="%Y-%m-%d %H:%M:%S"))
+
       for(iParticipant in 1:length(sampleMeta$barcode)){
 
-          cRecs<-recs.summary[record==eval(sampleMeta$barcode[iParticipant]) & !is.na(m_medication) & m_medication!="",]
+
+          #basic recommendations
+          combinedId<-paste0(analysisId,"_",sampleMeta$barcode[iParticipant])
+          cSampleSettings<-sampleSettingsList[[combinedId]]
+
+          recommendations.basic<-pgxrexApplicationDAO$getPGXRecommendation(dfGenotypes = cSampleSettings$pgx_calls_table_custom[!is.na(diplotype_name) & diplotype_name!="",.(gene,diplotype=diplotype_name)])
+          catl("Recommendations fetched for genotypes.")
+
+          # View(recommendations.basic$dfApplicationRecommendations)
+          # View(recommendations.basic$dfApplicationRecommendationsDrugGene)
+          # View(recommendations.basic$dfApplicationRecommendationsDrug)
+
+          #REDCap entry for the basic genetics
+
+          #basic info
+          dfDataToEnter.genetics<-as.data.frame(matrix(NA,0,0))
+          dfDataToEnter.genetics[1,c("record","analysis_label","meta_time_analysis","participant_id","meta_time_gene_cyp2b6","meta_time_gene_cyp2c19","meta_time_gene_cyp2d6")]<-c(
+            sampleMeta$externalRecordMapping[iParticipant],
+            analysisId,
+            currentDatetimeString,
+            sampleMeta$barcode[iParticipant],
+            currentDatetimeString,
+            currentDatetimeString,
+            currentDatetimeString
+            )
+
+          #genetics - diplotypes
+          if(nrow(cSampleSettings$pgx_calls_table_custom[gene=="CYP2B6",])>0) dfDataToEnter.genetics[1,c("genotype_diplotype_cyp2b6")]<-c(cSampleSettings$pgx_calls_table_custom[gene=="CYP2B6",c("diplotype_name")])
+          if(nrow(cSampleSettings$pgx_calls_table_custom[gene=="CYP2C19",])>0) dfDataToEnter.genetics[1,c("genotype_diplotype_cyp2c19")]<-c(cSampleSettings$pgx_calls_table_custom[gene=="CYP2C19",c("diplotype_name")])
+          if(nrow(cSampleSettings$pgx_calls_table_custom[gene=="CYP2D6",])>0) dfDataToEnter.genetics[1,c("genotype_diplotype_cyp2d6")]<-c(cSampleSettings$pgx_calls_table_custom[gene=="CYP2D6",c("diplotype_name")])
+
+          #genetics - alleles
+          #Downprioritised - we have the diplotypes
+
+          #diplotype frequency by ancestry
+          dfAggregateGene<-recommendations.basic$dfApplicationRecommendationsDrugGene
+          setorder(dfAggregateGene, -prada_cpiclevel_num, -classification_strength_num, recommendation, gene_name)
+          #dfAggregateGene[,.(count = .N, diplotype_frequency = head(.SD, 1)$diplotype_frequency), by = .(gene_name,diplotype)]
+          #HERE!!!
+
+          redcapDAO$importRecords(redcapDAO$convertToLongRecordVectorForREDCapImport(dfDataToEnter.genetics,redcap_event_name = "genetics_pgx_arm_1"))
+
+          cRecs<-recs.summary[record==eval(sampleMeta$externalRecordMapping[iParticipant]) & !is.na(m_medication) & m_medication!="",]
           if(nrow(cRecs)>0){
-            #basic recommendations
-            combinedId<-paste0(analysisId,"_",sampleMeta$barcode[iParticipant])
-            cSampleSettings<-sampleSettingsList[[combinedId]]
-
-            recommendations.basic<-pgxrexApplicationDAO$getPGXRecommendation(dfGenotypes = cSampleSettings$pgx_calls_table_custom[!is.na(diplotype_name) & diplotype_name!="",.(gene,diplotype=diplotype_name)])
-            catl("Recommendations fetched for genotypes.")
-
-            # View(recommendations.basic$dfApplicationRecommendations)
-            # View(recommendations.basic$dfApplicationRecommendationsDrugGene)
-            # View(recommendations.basic$dfApplicationRecommendationsDrug)
 
 
             dfPhenotypeModifiers<-cRecs[,.(external_key_mapping=as.integer(m_medication),dummy=1)]
@@ -377,7 +414,7 @@ PgxrexClass$methods(
             }
 
             #feed back to REDCap
-            redcapDAO
+            #redcapDAO
 
 
           } else warning(paste0("No REDCap data available for the participant ",sampleMeta$barcode[iParticipant]))

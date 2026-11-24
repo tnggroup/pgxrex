@@ -86,9 +86,9 @@ PgxrexRedcapUtilityClass$methods(
 
 # Import Records
 PgxrexRedcapUtilityClass$methods(
-  importRecords=function(dataToEnter.json.string, returnParsed=TRUE){
+  importRecords=function(dataToEnter.longVector, returnParsed=TRUE){
 
-    dataToEnter.json<-jsonlite::toJSON(dataToEnter.json.string,auto_unbox = T)
+    dataToEnter.json<-jsonlite::toJSON(dataToEnter.longVector,auto_unbox = T)
 
     req <- request(base_url)
 
@@ -123,8 +123,55 @@ PgxrexRedcapUtilityClass$methods(
 )
 
 
-#test code for reference
+PgxrexRedcapUtilityClass$methods(
+  convertToLongRecordVectorForREDCapImport=function(dfDataToEnter, recordColumnName="record", redcap_event_name=NULL){
+
+    dfDataToEnter<-as.data.frame(dfDataToEnter)
+
+    # dfDataToEnter<-as.data.frame(matrix(NA,0,0))
+    # dfDataToEnter[1,c("record","meta_id_analysis","analysis_label","meta_id","participant_id")]<-c(1,1,"test1",1,"sample1_test1")
+    # dfDataToEnter[2,c("record","meta_id_analysis","analysis_label","meta_id","participant_id")]<-c(2,1,"test1",1,"sample2_test1")
+    #recordColumnName<-"record"
+    #redcap_event_name<-"genetics_pgx_arm_1"
+
+    dataToEnter<-c()
+    if(!is.null(redcap_event_name)){
+      for(iRecord in 1:nrow(dfDataToEnter)){
+        for(iVariable in 1:ncol(dfDataToEnter)){
+          if(colnames(dfDataToEnter)[iVariable]==recordColumnName) next
+          dataToEnter[[length(dataToEnter)+1]]<-list(
+            record=dfDataToEnter[iRecord,recordColumnName],
+            field_name=colnames(dfDataToEnter)[iVariable],
+            value=dfDataToEnter[iRecord,iVariable],
+            redcap_event_name=redcap_event_name
+          )
+        }
+      }
+    } else {
+      for(iRecord in 1:nrow(dfDataToEnter)){
+        for(iVariable in 1:ncol(dfDataToEnter)){
+          if(colnames(dfDataToEnter)[iVariable]==recordColumnName) next
+          dataToEnter[[length(dataToEnter)+1]]<-list(
+            record=dfDataToEnter[iRecord,recordColumnName],
+            field_name=colnames(dfDataToEnter)[iVariable],
+            value=dfDataToEnter[iRecord,iVariable]
+            #redcap_event_name=redcap_event_name
+          )
+        }
+      }
+    }
+
+    return(dataToEnter)
+
+  }
+)
+
+
+#
+#
+# #test code for reference
 # library(jsonlite)
+# library(httr2)
 #
 # dataToEnter<-c()
 # dataToEnter[[1]]<-list(
@@ -151,55 +198,68 @@ PgxrexRedcapUtilityClass$methods(
 #   value="sample1_test1",
 #   redcap_event_name="genetics_pgx_arm_1"
 # )
-#
 # dataToEnter[[5]]<-list(
-#   record=2,
-#   field_name="meta_id_analysis",
+#   record=1,
+#   field_name="meta_id_gene_cyp2b6",
 #   value="1",
 #   redcap_event_name="genetics_pgx_arm_1"
 # )
 # dataToEnter[[6]]<-list(
 #   record=2,
+#   field_name="meta_id_analysis",
+#   value="1",
+#   redcap_event_name="genetics_pgx_arm_1"
+# )
+# dataToEnter[[7]]<-list(
+#   record=2,
 #   field_name="analysis_label",
 #   value="test1",
 #   redcap_event_name="genetics_pgx_arm_1"
 # )
-# dataToEnter[[7]]<-list(
+# dataToEnter[[8]]<-list(
 #   record=2,
 #   field_name="meta_id",
 #   value="2",
 #   redcap_event_name="genetics_pgx_arm_1"
 # )
-# dataToEnter[[8]]<-list(
+# dataToEnter[[9]]<-list(
 #   record=2,
 #   field_name="participant_id",
 #   value="sample2_test1",
 #   redcap_event_name="genetics_pgx_arm_1"
 # )
+# dataToEnter[[10]]<-list(
+#   record=2,
+#   field_name="meta_id_gene_cyp2b6",
+#   value="2",
+#   redcap_event_name="genetics_pgx_arm_1"
+# )
+#
+# pgxrexObj$redcapDAO$importRecords(dataToEnter.longVector = dataToEnter)
 #
 #
-# dataToEnter.json<-jsonlite::toJSON(dataToEnter,auto_unbox = T)
-#
-# req <- request(pgxrexObj$redcapDAO$base_url)
-#
-# req <- req |>
-#   req_headers(Accept = "application/json") |>
-#   req_body_form(
-#     token=pgxrexObj$redcapDAO$apiToken,
-#     content='record',
-#     action='import',
-#     format='json',
-#     type='eav', #'flat'
-#     overwriteBehavior = 'normal',
-#     forceAutoNumber = 'false',
-#     data = dataToEnter.json,
-#     returnContent = 'ids',
-#     returnFormat = 'json'
-#   )
-#
-# resp <- req |>
-#   req_error(is_error = \(resp) FALSE) |>
-#   req_perform()
-#
-# lRecs <- resp_body_json(resp)
-# lIds <- unlist(lRecs)
+# # dataToEnter.json<-jsonlite::toJSON(dataToEnter,auto_unbox = T)
+# #
+# # req <- request(pgxrexObj$redcapDAO$base_url)
+# #
+# # req <- req |>
+# #   req_headers(Accept = "application/json") |>
+# #   req_body_form(
+# #     token=pgxrexObj$redcapDAO$apiToken,
+# #     content='record',
+# #     action='import',
+# #     format='json',
+# #     type='eav', #'flat'
+# #     overwriteBehavior = 'normal',
+# #     forceAutoNumber = 'false',
+# #     data = dataToEnter.json,
+# #     returnContent = 'ids',
+# #     returnFormat = 'json'
+# #   )
+# #
+# # resp <- req |>
+# #   req_error(is_error = \(resp) FALSE) |>
+# #   req_perform()
+# #
+# # lRecs <- resp_body_json(resp)
+# # lIds <- unlist(lRecs)

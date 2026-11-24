@@ -519,14 +519,14 @@ BEGIN
 	SELECT DISTINCT ON (drug_name,cpic_drugid,gene_name) rec.*
 	FROM t_application_recommendation rec
 	--WHERE usedforrecommendation=TRUE
-	ORDER BY drug_name,cpic_drugid,gene_name, genecheck_sum DESC, prada_cpiclevel_num DESC, classification_strength_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC;
+	ORDER BY drug_name,cpic_drugid,gene_name, genecheck_sum DESC, activityscore_min_num DESC, prada_cpiclevel_num DESC, classification_strength_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC;
 
 	DROP TABLE IF EXISTS t_application_recommendation_filtered_drug;
 	CREATE TEMP TABLE IF NOT EXISTS t_application_recommendation_filtered_drug AS
 	SELECT DISTINCT ON (drug_name,cpic_drugid) rec.*
 	FROM t_application_recommendation rec
 	--WHERE usedforrecommendation=TRUE
-	ORDER BY drug_name,cpic_drugid,genecheck_sum DESC, prada_cpiclevel_num DESC, classification_strength_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC, gene_name;
+	ORDER BY drug_name,cpic_drugid,genecheck_sum DESC, activityscore_min_num DESC, prada_cpiclevel_num DESC, classification_strength_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC, gene_name;
 
 
 	RETURN nid;
@@ -540,6 +540,8 @@ SELECT * FROM prada.generate_application_recommendation(); -- leave active for t
 --SELECT * FROM t_application_recommendation;
 --SELECT * FROM t_application_recommendation_filtered_drug_gene;
 --SELECT * FROM t_application_recommendation_filtered_drug;
+--SELECT drug_name, cpiclevel, classification, phenotype_cyp2b6, phenotype_cyp2c19, phenotype_cyp2d6, prada_start_dose FROM t_application_recommendation_filtered_drug;
+--SELECT drug_name, gene_name, cpiclevel, classification, phenotype_cyp2b6, phenotype_cyp2c19, phenotype_cyp2d6, prada_start_dose FROM t_application_recommendation_filtered_drug_gene;
 
 
 --THIS REQUIRES A PREVIOUS GENE_BASED RECOMMENDATION!
@@ -745,20 +747,20 @@ FROM
 		) AS converted_activityscore,
 		(
 		CASE
-			WHEN pgx.gene_name='CYP2C19' AND d_inhibitor.strength_numeric=3 THEN 'Poor Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND pgx.result='Indeterminate' THEN 'Indeterminate'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer' --Note, we treat all RM as UM
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Intermediate Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Poor Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND d_inducer.strength_numeric=3 THEN 'Ultrarapid Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer' --Note, we treat all RM as UM
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Normal Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND (pgx.result='Poor Metabolizer' OR pgx.result='Likely Poor Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Intermediate Metabolizer'
-			WHEN pgx.gene_name='CYP2C19' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN pgx.result
-			WHEN pgx.gene_name='CYP2C19' THEN 'ERROR_NOT_HANDLED_RESULT_SITUATION'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND d_inhibitor.strength_numeric=3 THEN 'Poor Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND pgx.result='Indeterminate' THEN 'Indeterminate'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Normal Metabolizer' --Note, we treat all RM as UM
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inhibitor.strength_numeric=2 OR d_inhibitor.strength_numeric=1) THEN 'Poor Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND d_inducer.strength_numeric=3 THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Ultrarapid Metabolizer' OR pgx.result='Likely Ultrarapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Rapid Metabolizer' OR pgx.result='Likely Rapid Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Normal Metabolizer' OR pgx.result='Likely Normal Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Ultrarapid Metabolizer' --Note, we treat all RM as UM
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Intermediate Metabolizer' OR pgx.result='Likely Intermediate Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Normal Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND (pgx.result='Poor Metabolizer' OR pgx.result='Likely Poor Metabolizer') AND (d_inducer.strength_numeric=2 OR d_inducer.strength_numeric=1) THEN 'Intermediate Metabolizer'
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' AND d_inhibitor.strength_numeric IS NULL AND d_inducer.strength_numeric IS NULL THEN pgx.result
+			WHEN pgx.gene_name='CYP2C19' OR pgx.gene_name='CYP2B6' THEN 'ERROR_NOT_HANDLED_RESULT_SITUATION'
 			ELSE NULL
 		END
 		) AS converted_result
@@ -767,7 +769,6 @@ FROM
 	LEFT OUTER JOIN d_inducer ON pgx.gene_name=d_inducer.gene_name 
 ) rec
 ORDER BY drug_name, gene_name, genecheck_sum DESC, prada_cpiclevel_num DESC, classification_strength_num DESC, prada_pgkbcalevel_num DESC, prada_ehrpriority_num DESC;
-
 
 RETURN nid;
 
@@ -779,7 +780,10 @@ $$ LANGUAGE plpgsql;
 ----SELECT * FROM t_prepared_recommendations;
 ----SELECT * FROM t_application_recommendation;
 ----SELECT * FROM t_application_recommendation_filtered_drug_gene;
+----SELECT drug_name, gene_name, result, activityscore_min_num FROM t_application_recommendation_filtered_drug_gene;
 ----SELECT * FROM t_application_recommendation_filtered_drug;
+----SELECT drug_name, cpiclevel, classification, phenotype_cyp2b6, phenotype_cyp2c19, phenotype_cyp2d6, prada_start_dose FROM t_application_recommendation_filtered_drug;
+----SELECT drug_name, gene_name, cpiclevel, classification, phenotype_cyp2b6, phenotype_cyp2c19, phenotype_cyp2d6, prada_start_dose FROM t_application_recommendation_filtered_drug_gene;
 --SELECT drug_name,phenotypes,prada_cpiclevel_num,classification_strength_num,genecheck_sum,
 --	prada_start_dose,
 --	prada_target_dose,
@@ -790,6 +794,7 @@ $$ LANGUAGE plpgsql;
 --	prada_switch2_gene,
 --	prada_tdm FROM t_application_recommendation_filtered_drug;
 --SELECT * FROM prada.populate_drug_gene_phenotype_input_through_phenoconversion();
+----SELECT * FROM t_drug_gene_phenotype_input;
 --SELECT * FROM prada.prepare_recommendations_from_phenotype_input();
 --SELECT * FROM prada.generate_application_recommendation();
 --SELECT drug_name,phenotypes,prada_cpiclevel_num,classification_strength_num,genecheck_sum,

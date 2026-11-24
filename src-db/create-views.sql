@@ -491,6 +491,10 @@ LIMIT 100;*/
 --SELECT DISTINCT chr,bp1,bp2,gene_name,gene_id FROM  prada.harmonised_combined_pgx tp WHERE prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0 OR prada_pgkbcalevel_num > 0 ORDER by chr,bp1,bp2;
 --SELECT DISTINCT chr,bp1,bp2,gene_name,gene_id,drug_class FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_class IS NOT NULL AND (prada_cpiclevel_num > 0 OR prada_pgkbcalevel_num > 0) ORDER by gene_name,chr,bp1,bp2; --antidepressant with some pgx literture support
 --SELECT DISTINCT tp.result FROM  prada.harmonised_combined_pgx tp WHERE tp.gene_name='CYP2C19' AND tp.drug_class IS NOT NULL AND tp.usedforrecommendation =TRUE AND prada_cpiclevel_num > 4 ORDER by tp.result;
+--SELECT DISTINCT drug_name, drug_class FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_class IS NOT NULL ORDER BY drug_class, drug_name;
+--SELECT DISTINCT result FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_class IS NOT NULL ORDER BY result;
+--SELECT DISTINCT result, activityscore, diplotype, activityscore_min_num FROM  prada.harmonised_combined_pgx tp WHERE tp.drug_name='sertraline' AND tp.gene_name='CYP2B6' AND tp.usedforrecommendation = TRUE ORDER BY result;
+--SELECT DISTINCT drug_name, result, activityscore, activityscore_min_num, lookupmethod FROM  prada.harmonised_combined_pgx tp WHERE tp.gene_name='CYP2B6' AND tp.usedforrecommendation = TRUE ORDER BY result;
 
 --DROP MATERIALIZED VIEW prada.harmonised_combined_pgx_gene;
 CREATE MATERIALIZED VIEW prada.harmonised_combined_pgx_gene

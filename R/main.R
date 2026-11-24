@@ -7,6 +7,7 @@
 # use browser() and source to debug in RStudio
 PgxrexClass <- setRefClass("Pgxrex",
                                            fields = list(
+                                             sharedRoutinesRunFlag = "ANY",
                                              contextDatabaseList = "ANY",
                                              nThread = "numeric",
                                              folderpathLaunch="ANY",
@@ -57,6 +58,8 @@ PgxrexClass <- setRefClass("Pgxrex",
                                                } else {
                                                  contextDatabaseList["protectedFilePath"]<<-"protected.conf.txt"
                                                }
+
+                                               sharedRoutinesRunFlag<<-FALSE
 
                                                nThread <<- 6
                                                folderpathLaunch <<- getwd()

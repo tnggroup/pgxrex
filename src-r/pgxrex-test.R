@@ -20,6 +20,8 @@ pgxrexObj$testFlag.prepared.analysis<-TRUE #TEST
 
 #sbrowser()
 
+pgxrexObj$shared()
+
 #pgxrexObj$trace("automation")
 pgxrexObj$automation(command = "automatic_routine")
 
